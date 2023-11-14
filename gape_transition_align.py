@@ -78,6 +78,10 @@ for nf in range(num_files):
 	wanted_frame = wanted_frame[state_bool]
 	name_list = wanted_frame['data.basename']
 	taste_list = wanted_frame['data.taste_num']
+	print("There are " + str(len(taste_list)) + " tastes available.")
+	taste_bool = int_input("Which taste do you want (index starting from 0)? ")
+	wanted_frame = wanted_frame[taste_bool]
+	taste_list = wanted_frame['data.taste_num']
 	pkl_path_list = wanted_frame['exp.save_path']
 	this_handler = PklHandler(pkl_path_list[0])
 	#Import changepoints for each delivery
