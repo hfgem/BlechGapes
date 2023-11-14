@@ -10,7 +10,7 @@ This code plots gape onset
 
 # Import stuff!
 import numpy as np
-import tables, easygui, sys, os, glob, json
+import tables, easygui, sys, os, glob, json, pickle
 import matplotlib.pyplot as plt
 from matplotlib import cm
 import pandas as pd
@@ -175,6 +175,13 @@ for na in range(num_anim):
 print('Please select a directory to save all results from this set of analyses.')
 results_dir = easygui.diropenbox(title='Please select the storage folder.')
 
+#Save dictionary
+dict_save_dir = os.path.join(results_dir,'gape_onset_dict.pkl')
+f = open(dict_save_dir,"wb")
+pickle.dump(data_dict,f)
+#with open(dict_save_dir, "rb") as pickle_file:
+#    data_dict = pickle.load(pickle_file)
+
 #%% Process Gape Data for Analyses
 pre_time = 2000 #pre-taste time in data (ms) to subtract
 
@@ -212,12 +219,8 @@ for na in range(num_anim):
 			trial_diff = np.diff(trial_gape_data)
 			trial_gape_starts = np.where(trial_diff == 1)[0] - pre_time +1 #starts of gapes converted to ms from taste delivery
 			trial_gape_ends = np.where(trial_diff == -1)[0] - pre_time +1 #ends of gapes converted to ms from taste delivery
-			#weed out gapes outside of selected gape-detection-interval
-			keep_inds = np.where((trial_gape_starts > gape_start_min)*(trial_gape_starts < gape_start_max))[0]
-			trial_gape_starts = trial_gape_starts[keep_inds]
-			trial_gape_ends = trial_gape_ends[keep_inds]
-			#weed out gapes longer than given gape length max
-			keep_inds = np.where((trial_gape_ends - trial_gape_starts) >= gape_end)[0]
+			#weed out gapes outside of selected gape-detection-interval and weed out gapes longer than given gape length max
+			keep_inds = np.where((trial_gape_starts > gape_start_min)*(trial_gape_starts < gape_start_max)*(trial_gape_ends - trial_gape_starts >= gape_end))[0]
 			trial_gape_starts = trial_gape_starts[keep_inds]
 			trial_gape_ends = trial_gape_ends[keep_inds]
 			num_trial_gapes = len(trial_gape_starts)
@@ -244,6 +247,7 @@ first_gape_lengths = []
 first_gapes_data_names = []
 #_____Plot within-animal/dataset stats_____
 for na in range(num_anim):
+	anim_dir = data_dict[na]['dir']
 	anim_name = data_dict[na]['given_name']
 	anim_taste_names = data_dict[na]['taste_names']
 	joint_names = [anim_name+'_'+anim_taste_name for anim_taste_name in anim_taste_names]
@@ -255,12 +259,26 @@ for na in range(num_anim):
 		taste_gape_times = anim_gape_times[t_i]
 		num_trials = len(taste_gape_times)
 		taste_first_gapes = []
+		taste_first_gape_times = []
 		taste_first_lengths = []
 		for trial in range(num_trials):
 			trial_gape_times = taste_gape_times[trial]
 			if ~np.isnan(trial_gape_times[0][0]):
+				taste_first_gape_times.append(trial_gape_times[0])
 				taste_first_gapes.extend([trial_gape_times[0][0]])
 				taste_first_lengths.extend([trial_gape_times[0][1]-trial_gape_times[0][0]])
+			else:
+				taste_first_gape_times.append([np.nan,np.nan])
+				taste_first_gapes.extend([np.nan])
+				taste_first_lengths.extend([np.nan])
+		#Save first gapes to numpy array
+		taste_first_gape_times = np.array(taste_first_gape_times)
+		gape_onset_dir = os.path.join(anim_dir,'gape_onset_plots')
+		if os.path.isdir(gape_onset_dir) == False:
+			os.mkdir(gape_onset_dir)
+		first_gape_save_dir = os.path.join(gape_onset_dir,anim_name + '_' + anim_taste_names[t_i] + '_first_gapes.npy')
+		np.save(first_gape_save_dir, taste_first_gape_times)
+		#Add to dictionary
 		anim_first_gapes.append(taste_first_gapes)
 		anim_first_gape_lengths.append(taste_first_lengths)
 	first_gapes.extend(anim_first_gapes)
@@ -357,17 +375,17 @@ for na in range(num_anim):
 			if ~np.isnan(trial_gape_times[0][0]):
 				taste_first_gapes.extend([trial_gape_times[0][0]])
 				taste_first_lengths.extend([trial_gape_times[0][1]-trial_gape_times[0][0]])
-		first_gape_means.extend([np.mean(taste_first_gapes)])
-		first_gape_std.extend([np.std(taste_first_gapes)])
-		first_gape_length_means.extend([np.mean(taste_first_lengths)])
-		first_gape_length_stds.extend([np.std(taste_first_lengths)])
+		first_gape_means.extend([np.nanmean(taste_first_gapes)])
+		first_gape_std.extend([np.nanstd(taste_first_gapes)])
+		first_gape_length_means.extend([np.nanmean(taste_first_lengths)])
+		first_gape_length_stds.extend([np.nanstd(taste_first_lengths)])
 	plt.figure(1)
 	plt.scatter(np.arange(num_tastes),first_gape_means,color=cmap[na],label=anim_name)
 	for t_i in range(num_tastes):
 		plt.plot([t_i,t_i],[first_gape_means[t_i]-first_gape_std[t_i],first_gape_means[t_i]+first_gape_std[t_i]],color=cmap[na],alpha=0.5,label='_nolegend_')
-	plt.plot(np.arange(num_tastes),first_gape_means,color=cmap[na],alpha=0.5,label='_nolegend_'
+	plt.plot(np.arange(num_tastes),first_gape_means,color=cmap[na],alpha=0.5,label='_nolegend_')
 	plt.figure(2)
-    plt.scatter(np.arange(num_tastes),first_gape_length_means,color=cmap[na],label=anim_name)
+	plt.scatter(np.arange(num_tastes),first_gape_length_means,color=cmap[na],label=anim_name)
 	for t_i in range(num_tastes):
 		plt.plot([t_i,t_i],[first_gape_length_means[t_i]-first_gape_length_stds[t_i],first_gape_length_means[t_i]+first_gape_length_stds[t_i]],color=cmap[na],alpha=0.5,label='_nolegend_')
 	plt.plot(np.arange(num_tastes),first_gape_length_means,color=cmap[na],alpha=0.5,label='_nolegend_')
