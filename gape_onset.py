@@ -17,8 +17,8 @@ import pandas as pd
 from scipy.stats import mannwhitneyu, f_oneway
 from itertools import combinations
 # Necessary blech_clust modules
-#sys.path.append('/home/cmazzio/Desktop/blech_clust/')
-sys.path.append('Users/hannahgermaine/Documents/GitHub/blech_clust/')
+sys.path.append('/home/cmazzio/Desktop/blech_clust/')
+#sys.path.append('Users/hannahgermaine/Documents/GitHub/blech_clust/')
 from utils.blech_utils import (
 		imp_metadata,
 		)
@@ -100,8 +100,8 @@ def scatt_line_plot(dataset,xlabels,all_pairs,ylabel,anim_name,title,savename,sa
 	cm_subsection = np.linspace(0,1,num_datapoints)
 	cmap = [cm.gist_rainbow(x) for x in cm_subsection]
 	x_vals = np.arange(num_datapoints)
-	mean_vals = [np.mean(dataset[i]) for i in range(num_datapoints)]
-	std_vals = [np.std(dataset[i]) for i in range(num_datapoints)]
+	mean_vals = [np.nanmean(dataset[i]) for i in range(num_datapoints)]
+	std_vals = [np.nanstd(dataset[i]) for i in range(num_datapoints)]
 	f_box = plt.figure(figsize=(8,8))
 	for i in range(num_datapoints):
 		x_i = x_vals[i]

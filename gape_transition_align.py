@@ -9,7 +9,10 @@ Created on Wed Sep  6 12:51:31 2023
 ###############################################################################################
 ### find neurons with FR changes at each transition for CM26 quinine & saccharin on Test day 1###
 ###############################################################################################
+
 import sys, pickle, easygui, os
+sys.path.append('/home/cmazzio/Desktop/blech_clust/')
+sys.path.append('/home/cmazzio/Desktop/pytau/')
 from matplotlib import cm
 from pytau.changepoint_io import FitHandler
 import pylab as plt
@@ -79,8 +82,10 @@ for nf in range(num_files):
 	name_list = wanted_frame['data.basename']
 	taste_list = wanted_frame['data.taste_num']
 	print("There are " + str(len(taste_list)) + " tastes available.")
-	taste_bool = int_input("Which taste do you want (index starting from 0)? ")
-	wanted_frame = wanted_frame[taste_bool]
+	print("Available taste indices:")
+	print(list(taste_list))
+	taste_ind = int_input("Which taste do you want from this list? ")
+	wanted_frame = wanted_frame[wanted_frame['data.taste_num'] == taste_ind]
 	taste_list = wanted_frame['data.taste_num']
 	pkl_path_list = wanted_frame['exp.save_path']
 	this_handler = PklHandler(pkl_path_list[0])
@@ -91,6 +96,7 @@ for nf in range(num_files):
 	#Store changepoint and spike data in dictionary
 	tau_data_dict[nf] = dict()
 	tau_data_dict[nf]['data_dir'] = data_dir
+	name_list = wanted_frame['data.basename']
 	print("Give a more colloquial name to the dataset.")
 	given_name = input("How would you rename " + name_list + "? ")
 	tau_data_dict[nf]['given_name'] = given_name
@@ -146,6 +152,7 @@ first_gapes_data = []
 preceding_transitions = []
 for nf in range(len(tau_data_dict)):
 	given_name = tau_data_dict[nf]['given_name']
+	tau_data_names.extend([given_name])
 	#load changepoint information
 	scaled_mode_tau = tau_data_dict[nf]['scaled_mode_tau']
 	taste_list = tau_data_dict[nf]['taste_list']
@@ -158,57 +165,65 @@ for nf in range(len(tau_data_dict)):
 	for fg_i, fg_times in enumerate(first_gapes):
 		trial_tau = scaled_mode_tau[fg_i] - pre_taste_time
 		trial_gape_onset = fg_times[0]
-		pre_cp = np.where(trial_gape_onset - trial_tau > 0)[0][0]
-		pre_cp_i[fg_i] = pre_cp
+		if ~np.isnan(trial_gape_onset):
+			try:
+				pre_cp = np.where(trial_gape_onset - trial_tau > 0)[0][-1]
+				pre_cp_i[fg_i] = pre_cp
+			except:
+				pre_cp_i[fg_i] = np.nan
+		else:
+			pre_cp_i[fg_i] = np.nan
 	preceding_transitions.append(pre_cp_i)
 	f_pre = plt.figure()
 	plt.hist(pre_cp_i)
 	plt.title('Changepoint Index Preceding First Gape')
 	plt.xlabel('Changepoint Index')
 	plt.ylabel('Number of Trials')
-	plt.savefig(f_pre,cp_stats_dir + given_name + '_cp_preceding_first_gape.png')
-	plt.savefig(f_pre,cp_stats_dir + given_name + '_cp_preceding_first_gape.svg')
+	f_pre.savefig(os.path.join(cp_stats_dir,given_name + '_cp_preceding_first_gape.png'))
+	f_pre.savefig(os.path.join(cp_stats_dir,given_name + '_cp_preceding_first_gape.svg'))
+    plt.close(f_pre)
 	#spike trains for trial
 	spike_trains = tau_data_dict[nf]['spike_train']
 	#plot spike train with overlaid changepoints and gape times
-	for t_i, train in spike_trains:
-		if ~np.isnan(first_gapes[t_i][0]):
+	for t_i, train in enumerate(spike_trains):
+		if ~np.isnan(first_gapes[t_i][0]): #Only plot if gape occurs
+			num_neur = np.shape(train)[0]
+			train_indices = [list(np.where(train[n_i] == 1)[0]) for n_i in range(num_neur)]
 			f_i = plt.figure()
-			plt.eventplot(train,alpha=0.5,color='k')
+			plt.eventplot(train_indices,alpha=0.5,color='k')
 			x_ticks = plt.xticks()
-			x_tick_labels = x_ticks - pre_taste_time
-			plt.xticks(x_ticks,x_tick_labels)
-			for cp in scaled_mode_tau:
+			x_tick_labels = x_ticks[0] - pre_taste_time
+			plt.xticks(x_ticks[0],x_tick_labels)
+			for cp in scaled_mode_tau[t_i]:
 				plt.axvline(cp,color='r')
-			plt.fill_between(np.arange(first_gapes[t_i][0],first_gapes[t_i][1]),min(x_ticks),max(x_ticks),alpha=0.3,color='y')
+			plt.fill_between(np.arange(first_gapes[t_i][0] + pre_taste_time,first_gapes[t_i][1] + pre_taste_time),0,num_neur,alpha=0.3,color='y')
 			plt.title('Trial ' + str(t_i))
 			plt.xlabel('Time from Taste Delivery (ms)')
 			plt.ylabel('Neuron Index')
-			plt.savefig(f_i,gape_align_cp_dir + given_name + '_trial_' + str(t_i) + '.png')
-			plt.savefig(f_i,gape_align_cp_dir + 'trial_' + str(t_i) + '.svg')
+			f_i.savefig(os.path.join(gape_align_cp_dir,given_name + '_trial_' + str(t_i) + '.png'))
+			f_i.savefig(os.path.join(gape_align_cp_dir,given_name + '_trial_' + str(t_i) + '.svg'))
+            plt.close(f_i)
 
 #%% Plot changes in changepoint onsets across animals
 
-tau_onsets, ax_onsets = plt.subplots(np.shape(tau_data[0][1]),figsize=(8,8))
-cm_subsection = np.linspace(0,1,len(tau_data))
-cmap = [cm.gist_rainbow(x) for x in cm_subsection]
+tau_onsets, ax_onsets = plt.subplots(np.shape(tau_data[0][1])[0],figsize=(8,8))
 for nf in range(len(tau_data)):
 	nf_tau = tau_data[nf]
 	for cp_i in range(np.shape(nf_tau)[1]):
 		mu_tau = np.nanmean(nf_tau[:,cp_i])
 		sig_tau = np.nanstd(nf_tau[:,cp_i])
-		ax_onsets[cp_i].scatter(nf,mu_tau,color=cmap[nf])
-		ax_onsets[cp_i].plot([nf,nf],[mu_tau-sig_tau,mu_tau+sig_tau],color=cmap[nf])
+		ax_onsets[cp_i].scatter(nf,mu_tau,color='k')
+		ax_onsets[cp_i].plot([nf,nf],[mu_tau-sig_tau,mu_tau+sig_tau],color='k')
 for ax_i in range(len(ax_onsets)):
-	ax_onsets[ax_i].ylabel('Mean Onset (ms)')
-	x_ticks = ax_onsets[ax_i].xticks()
-	ax_onsets[ax_i].xticks(x_ticks,tau_data_names)
-	ax_onsets[ax_i].x_label('Dataset')
-	ax_onsets[ax_i].title('Changepoint ' + str(ax_i))
-	ax_onsets[ax_i].legend()
+	ax_onsets[ax_i].set_ylabel('Mean Onset (ms)')
+	plt.figure(ax_i+1)
+	ax_onsets[ax_i].set_xticks(np.arange(len(tau_data_names)))
+	ax_onsets[ax_i].set_xticklabels(labels=tau_data_names)
+	ax_onsets[ax_i].set_xlabel('Dataset')
+	ax_onsets[ax_i].set_title('Changepoint ' + str(ax_i))
 tau_onsets.tight_layout()
-plt.savefig(tau_onsets,cp_stats_dir + 'cp_onsets.png')
-plt.savefig(tau_onsets,cp_stats_dir + 'cp_onsets.svg')
+tau_onsets.savefig(os.path.join(cp_stats_dir,'cp_onsets.png'))
+tau_onsets.savefig(os.path.join(cp_stats_dir,'cp_onsets.svg'))
 		
 
 
