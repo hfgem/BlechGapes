@@ -48,6 +48,7 @@ def bool_input(prompt):
 	#This function asks a user for an integer input
 	bool_loop = 1	
 	while bool_loop == 1:
+		print("Respond with Y/y/N/n:")
 		response = input(prompt)
 		if (response.lower() != 'y')*(response.lower() != 'n'):
 			print("\tERROR: Incorrect data entry, only give Y/y/N/n.")
@@ -81,10 +82,10 @@ for nf in range(num_files):
 	wanted_frame = wanted_frame[state_bool]
 	name_list = wanted_frame['data.basename']
 	taste_list = wanted_frame['data.taste_num']
-	print("There are " + str(len(taste_list)) + " tastes available.")
-	print("Available taste indices:")
-	print(list(taste_list))
-	taste_ind = int_input("Which taste do you want from this list? ")
+	print("\tThere are " + str(len(taste_list)) + " tastes available.")
+	print("\tAvailable taste indices:")
+	print("\t" + list(taste_list))
+	taste_ind = int_input("\tWhich taste do you want from this list? ")
 	wanted_frame = wanted_frame[wanted_frame['data.taste_num'] == taste_ind]
 	taste_list = wanted_frame['data.taste_num']
 	pkl_path_list = wanted_frame['exp.save_path']
@@ -97,24 +98,39 @@ for nf in range(num_files):
 	tau_data_dict[nf] = dict()
 	tau_data_dict[nf]['data_dir'] = data_dir
 	name_list = wanted_frame['data.basename']
-	print("Give a more colloquial name to the dataset.")
-	given_name = input("How would you rename " + name_list + "? ")
+	print("\tGive a more colloquial name to the dataset.")
+	given_name = input("\tHow would you rename " + list(name_list)[0] + "? ")
 	tau_data_dict[nf]['given_name'] = given_name
 	tau_data_dict[nf]['taste_list'] = taste_list
 	tau_data_dict[nf]['states'] = desired_states
 	tau_data_dict[nf]['scaled_mode_tau'] = scaled_mode_tau
 	tau_data_dict[nf]['spike_train'] = spike_train
+	#Import associated emg data
+	try:
+		emg_filt = np.load(os.path.join(data_dir,'emg_output','emg','emg_filt.npy'))
+		tau_data_dict[nf]['emg_filt'] = emg_filt
+		print("\tEmg filtered data successfully imported for dataset.")
+	except:
+		print("\tEmg filtered data not imported successfully.")
+		bool_val = bool_input("\tIs there an emg_filt.npy file to import?")
+		if bool_val == 'y':
+			emg_filt_data_dir = easygui.diropenbox(title='\tPlease select the folder where emg_filt.npy is stored.')
+			emg_filt = np.load(os.path.join(emg_filt_data_dir,'emg_filt.npy'))
+			tau_data_dict[nf]['emg_filt'] = emg_filt
+		else:
+			print("\tMoving On.")
 	#Import associated gapes
-	print("Now import associated first gapes data with this dataset.")
-	gape_data_dir = easygui.diropenbox(title='Please select the folder where data is stored.')
+	print("\tNow import associated first gapes data with this dataset.")
+	gape_data_dir = easygui.diropenbox(title='\tPlease select the folder where data is stored.')
 	#Search for matching file type - ends in _gapes.npy
 	files_in_dir = os.listdir(gape_data_dir)
 	for filename in files_in_dir:
 		if filename[-10:] == '_gapes.npy':
-			bool_val = bool_input("Is " + filename + " the correct associated file with " + given_name + "?")
+			bool_val = bool_input("\tIs " + filename + " the correct associated file with " + given_name + "?")
 			if bool_val == 'y':
 				first_gapes =  np.load(os.path.join(gape_data_dir,filename))
 				tau_data_dict[nf]['first_gapes'] = first_gapes
+				break
 	try: #Check that something was imported
 		first_gapes = tau_data_dict[nf]['first_gapes']
 	except:
@@ -146,6 +162,7 @@ if os.path.isdir(cp_stats_dir) == False:
 	os.mkdir(cp_stats_dir)
 
 #tau for all trials of each dataset 
+max_num_tau = 0
 tau_data = []
 tau_data_names = []
 first_gapes_data = []
@@ -164,6 +181,8 @@ for nf in range(len(tau_data_dict)):
 	pre_cp_i = np.zeros(np.shape(first_gapes)[0])
 	for fg_i, fg_times in enumerate(first_gapes):
 		trial_tau = scaled_mode_tau[fg_i] - pre_taste_time
+		if len(trial_tau) > max_num_tau:
+			max_num_tau = len(trial_tau)
 		trial_gape_onset = fg_times[0]
 		if ~np.isnan(trial_gape_onset):
 			try:
@@ -181,7 +200,7 @@ for nf in range(len(tau_data_dict)):
 	plt.ylabel('Number of Trials')
 	f_pre.savefig(os.path.join(cp_stats_dir,given_name + '_cp_preceding_first_gape.png'))
 	f_pre.savefig(os.path.join(cp_stats_dir,given_name + '_cp_preceding_first_gape.svg'))
-    plt.close(f_pre)
+	plt.close(f_pre)
 	#spike trains for trial
 	spike_trains = tau_data_dict[nf]['spike_train']
 	#plot spike train with overlaid changepoints and gape times
@@ -202,11 +221,11 @@ for nf in range(len(tau_data_dict)):
 			plt.ylabel('Neuron Index')
 			f_i.savefig(os.path.join(gape_align_cp_dir,given_name + '_trial_' + str(t_i) + '.png'))
 			f_i.savefig(os.path.join(gape_align_cp_dir,given_name + '_trial_' + str(t_i) + '.svg'))
-            plt.close(f_i)
+			plt.close(f_i)
 
 #%% Plot changes in changepoint onsets across animals
 
-tau_onsets, ax_onsets = plt.subplots(np.shape(tau_data[0][1])[0],figsize=(8,8))
+tau_onsets, ax_onsets = plt.subplots(max_num_tau,figsize=(8,8))
 for nf in range(len(tau_data)):
 	nf_tau = tau_data[nf]
 	for cp_i in range(np.shape(nf_tau)[1]):
@@ -224,169 +243,36 @@ for ax_i in range(len(ax_onsets)):
 tau_onsets.tight_layout()
 tau_onsets.savefig(os.path.join(cp_stats_dir,'cp_onsets.png'))
 tau_onsets.savefig(os.path.join(cp_stats_dir,'cp_onsets.svg'))
-		
+
+#%% Plot preceding transition stats
+
+#Histogram
+plt.figure()
+n = plt.hist(preceding_transitions,label=tau_data_names)
+plt.title('Transition Immediately Preceding Gape Onset')
+cp_labels = ['CP ' + str(i) for i in range(max_num_tau)]
+plt.xticks(np.arange(max_num_tau),labels=cp_labels)
+plt.xlabel('Changepoint')
+plt.ylabel('Number of Gape Trials')
+plt.savefig(os.path.join(cp_stats_dir,'preceding_cp_hist.png'))
+plt.savefig(os.path.join(cp_stats_dir,'preceding_cp_hist.svg'))
 
 
-#%%
+#Pie charts
+f_pie, ax_pie = plt.subplots(len(preceding_transitions))
+for nf in range(len(preceding_transitions)):
+	nf_pt = np.array(preceding_transitions[nf])
+	nf_pt_nan = np.isnan(nf_pt)
+	nf_pt_nonan = nf_pt[np.where(~nf_pt_nan)[0]]
+	cp_counts = np.zeros(max_num_tau)
+	for cp_i in range(max_num_tau):
+		cp_counts[cp_i] = len(np.where(nf_pt_nonan == cp_i)[0])
+	cp_labels = ['CP ' + str(i) for i in range(max_num_tau)]
+	ax_pie[nf].pie(cp_counts,label=cp_labels,autopct='%1.1f%%')
+	ax_pie[nf].set_title(tau_data_names[nf])
+plt.savefig(os.path.join(cp_stats_dir,'preceding_cp_pie.png'))
+plt.savefig(os.path.join(cp_stats_dir,'preceding_cp_pie.svg'))
 
-#first_sac_gapes: trial x time (onset and offset times of first gapes in each trial)
-#first_gape_save_dir = os.path.join(anim_dir,'gape_onset_plots',anim_name + '_' + anim_taste_names[t_i] + '.npy')
-
-first_sac_gapes = np.load('/media/cmazzio/large_data/CM26/CM26_CTATest_h2o_sac_nacl_qhcl_230819_101513/gape_onset_plots/CM26_CTATest_first_sac_gapes.npy')
-first_qhcl_gapes = np.load('/media/cmazzio/large_data/CM26/CM26_CTATest2_h2o_sac_ca_qhcl_230820_121050/gape_onset_plots/CM26_CTATest2_first_qhcl_gapes.npy')
-
-#pick out trials in which gaping occurred for each taste
-sac_gape_trials = first_sac_gapes[:, 0]
-qhcl_gape_trials = first_qhcl_gapes[:, 0]
-
-#trial in which gaping occurred
-sac_gape_onset = first_sac_gapes[:,1]
-qhcl_gape_onset = first_qhcl_gapes[:,1]
-
-#make tau array for only gape trials for each taste
-sac_gape_tau = np.zeros(first_sac_gapes.shape)
-num_trials = len(sac_gape_onset)
-num_cp = len(sac_tau[0])
-for trial_ind, trial in enumerate(sac_gape_trials):
-    for cp in range(num_cp):
-        this_tau = sac_tau[trial,cp]
-        sac_gape_tau[trial_ind, cp] = this_tau
-    
-qhcl_gape_tau = np.zeros(first_qhcl_gapes.shape)
-num_trials = len(qhcl_gape_onset)
-num_cp = len(qhcl_tau[0])
-for trial_ind, trial in enumerate(qhcl_gape_trials):
-    for cp in range(num_cp):
-        this_tau = qhcl_tau[trial,cp]
-        qhcl_gape_tau[trial_ind, cp] = this_tau    
-
-
-#find mean onset of each changepoint FOR ONLY GAPE TRIALS and find which of those changepoints 
-#the average onset to gaping for saccharin and quinine best aligns
-
-#find mean onset of saccharin gaping from day 1  
-mean_sac_gape_onset = np.mean(sac_gape_onset)
-
-num_cp = len(sac_tau[0])
-mean_sac_cp_onsets = np.zeros(num_cp)
-sac_diffs = np.zeros(num_cp)
-sac_cp_diffs = np.zeros(num_cp)
-for cp_ind, cp in enumerate(range(num_cp)):
-    this_onset_mean = np.mean(sac_gape_tau[:,cp])
-    mean_sac_cp_onsets[cp_ind] = this_onset_mean
-    this_diff = abs(this_onset_mean - mean_sac_gape_onset)
-    sac_diffs[cp_ind] = this_diff
-# find changepoint time that is closest to mean onset of gaping
-sac_gape_cp = np.argmin(sac_diffs)
-print('Transition aligned with sac gape onset: ' + str(sac_gape_cp))
-
-mean_qhcl_gape_onset = np.mean(qhcl_gape_onset)
-
-num_cp = len(qhcl_tau[0])
-mean_qhcl_cp_onsets = np.zeros(num_cp)
-qhcl_diffs = np.zeros(num_cp)
-qhcl_cp_diffs = np.zeros(num_cp)
-for cp_ind, cp in enumerate(range(num_cp)):
-    this_onset_mean = np.mean(qhcl_gape_tau[:,cp])
-    mean_qhcl_cp_onsets[cp_ind] = this_onset_mean
-    this_diff = abs(this_onset_mean - mean_qhcl_gape_onset)
-    qhcl_diffs[cp_ind] = this_diff
-
-qhcl_gape_cp = np.argmin(qhcl_diffs)
-print('Transition aligned with qhcl gape onset: ' + str(qhcl_gape_cp))
-
-#for plotting the gape trials below
-
-#pull out spike trains for only gape trials
-d1 = len(sac_gape_trials)
-d2 = day1_spike_train.shape[1]
-d3 = day1_spike_train.shape[2]
-day1_gape_spike_train = np.zeros(shape = (d1,d2,d3))
-for trial_ind, trial in enumerate(sac_gape_trials):
-    this_spike_train = day1_spike_train[trial]
-    day1_gape_spike_train[trial_ind] = this_spike_train
-
-
-d1 = len(qhcl_gape_trials)
-d2 = day2_spike_train.shape[1]
-d3 = day2_spike_train.shape[2]
-day2_gape_spike_train = np.zeros(shape = (d1,d2,d3))
-for trial_ind, trial in enumerate(qhcl_gape_trials):
-    this_spike_train = day2_spike_train[trial]
-    day2_gape_spike_train[trial_ind] = this_spike_train
-
-
-#find mean onset of each changepoint FOR ALL TRIALS and find which of those changepoints 
-#the average onset to gaping for saccharin and quinine best aligns
-
-#find the mean onset of each changepoint across all day 1 taste trials 
-# num_cp = len(sac_tau[0])
-# mean_sac_cp_onsets = np.zeros(num_cp)
-# sac_diffs = np.zeros(num_cp)
-# sac_cp_diffs = np.zeros(num_cp)
-# for cp_ind, cp in enumerate(range(num_cp)):
-#     this_onset_mean = np.mean(sac_tau[:,cp])
-#     mean_sac_cp_onsets[cp_ind] = this_onset_mean
-#     this_diff = abs(this_onset_mean - mean_sac_gape_onset)
-#     sac_diffs[cp_ind] = this_diff
-
-# #find changepoint time that is closest to mean onset of gaping
-# sac_gape_cp = np.argmin(sac_diffs)
-# print('Transition aligned with sac gape onset: ' + str(sac_gape_cp))
-
-#find mean onset of quinine gaping from day 2
-# mean_qhcl_gape_onset = np.mean(qhcl_gape_onset)
-
-# #find the mean onset of each changepoint across all day 1 taste trials 
-# num_cp = len(qhcl_tau[0])
-# mean_qhcl_cp_onsets = np.zeros(num_cp)
-# qhcl_diffs = np.zeros(num_cp)
-# qhcl_cp_diffs = np.zeros(num_cp)
-# for cp_ind, cp in enumerate(range(num_cp)):
-#     this_onset_mean = np.mean(qhcl_tau[:,cp])
-#     mean_qhcl_cp_onsets[cp_ind] = this_onset_mean
-#     this_diff = abs(this_onset_mean - mean_qhcl_gape_onset)
-#     qhcl_diffs[cp_ind] = this_diff
-
-# qhcl_gape_cp = np.argmin(qhcl_diffs)
-# print('Transition aligned with qhcl gape onset: ' + str(qhcl_gape_cp))
-
-#%%PLOTTING CHANGEPOINT MODEL
-
-#plotting for all trials
-fig, ax = plotting.plot_changepoint_raster(day1_spike_train, sac_tau+2000, [1500, 4000])
-plt.show()
-
-fig, ax = plotting.plot_changepoint_raster(day2_spike_train, qhcl_tau+2000, [1500, 4000])
-plt.show()
-
-fig, ax = plotting.plot_state_firing_rates(day1_spike_train, sac_tau+2000)
-plt.show()
-
-fig, ax = plotting.plot_state_firing_rates(day2_spike_train, qhcl_tau+2000)
-plt.show()
-
-
-# plotting for gape trials only
-fig, ax = plotting.plot_changepoint_raster(day1_gape_spike_train, sac_gape_tau+2000, [1500, 4000])
-plt.show()
-
-fig, ax = plotting.plot_changepoint_raster(day2_gape_spike_train, qhcl_gape_tau+2000, [1500, 4000])
-plt.show()
-
-fig, ax = plotting.plot_state_firing_rates(day1_gape_spike_train, sac_gape_tau+2000)
-plt.show()
-
-fig, ax = plotting.plot_state_firing_rates(day2_gape_spike_train, qhcl_gape_tau+2000)
-plt.show()
-
-
-
-fig, ax = plotting.plot_changepoint_overview(sac_gape_tau, [1500, 4000])
-plt.show()
-
-fig, ax = plotting.plot_aligned_state_firing(day1_gape_spike_train, sac_gape_tau, 300)
-plt.show()
 
 #%% PLOTTING CHANGEPOINT & EMG OVERLAY
 
