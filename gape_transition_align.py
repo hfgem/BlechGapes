@@ -9,7 +9,8 @@ Created on Wed Sep  6 12:51:31 2023
 ###############################################################################################
 ### find neurons with FR changes at each transition for CM26 quinine & saccharin on Test day 1###
 ###############################################################################################
-import sys
+import sys, pickle, easygui, os
+from matplotlib import cm
 from pytau.changepoint_io import FitHandler
 import pylab as plt
 from pytau.utils import plotting
@@ -17,7 +18,6 @@ import numpy as np
 from matplotlib import pyplot as plt
 from pytau.utils.ephys_data import EphysData
 from scipy import stats
-import easygui, os
 from pytau.changepoint_io import DatabaseHandler
 fit_database = DatabaseHandler()
 fit_database.drop_duplicates()
@@ -66,7 +66,7 @@ else:
 	print("Single file import selected.")
 
 #Pull all data into a dictionary
-data_dict = dict()
+tau_data_dict = dict()
 for nf in range(num_files):
 	#Directory selection
 	print("Please select the folder where the data # " + str(nf+1) + " is stored.")
@@ -85,28 +85,28 @@ for nf in range(num_files):
 	#Import spikes following each taste delivery
 	spike_train = this_handler.firing.raw_spikes
 	#Store changepoint and spike data in dictionary
-	data_dict[nf] = dict()
-	data_dict[nf]['data_dir'] = data_dir
+	tau_data_dict[nf] = dict()
+	tau_data_dict[nf]['data_dir'] = data_dir
 	print("Give a more colloquial name to the dataset.")
 	given_name = input("How would you rename " + name_list + "? ")
-	data_dict[nf]['given_name'] = given_name
-	data_dict[nf]['taste_list'] = taste_list
-	data_dict[nf]['states'] = desired_states
-	data_dict[nf]['scaled_mode_tau'] = scaled_mode_tau
-	data_dict[nf]['spike_train'] = spike_train
+	tau_data_dict[nf]['given_name'] = given_name
+	tau_data_dict[nf]['taste_list'] = taste_list
+	tau_data_dict[nf]['states'] = desired_states
+	tau_data_dict[nf]['scaled_mode_tau'] = scaled_mode_tau
+	tau_data_dict[nf]['spike_train'] = spike_train
 	#Import associated gapes
-	print("Now import associated gapes with this dataset.")
+	print("Now import associated first gapes data with this dataset.")
 	gape_data_dir = easygui.diropenbox(title='Please select the folder where data is stored.')
-	#Search for matching file type - ends in _snips.npy
+	#Search for matching file type - ends in _gapes.npy
 	files_in_dir = os.listdir(gape_data_dir)
 	for filename in files_in_dir:
 		if filename[-10:] == '_gapes.npy':
-			bool_val = bool_input("Is " + filename + " the correct associated file?")
+			bool_val = bool_input("Is " + filename + " the correct associated file with " + given_name + "?")
 			if bool_val == 'y':
 				first_gapes =  np.load(os.path.join(gape_data_dir,filename))
-				data_dict[nf]['first_gapes'] = first_gapes
-	try:
-		first_gapes = data_dict[nf]['first_gapes']
+				tau_data_dict[nf]['first_gapes'] = first_gapes
+	try: #Check that something was imported
+		first_gapes = tau_data_dict[nf]['first_gapes']
 	except:
 		'First gapes file not found in given folder. Program closing - try again.'
 		quit()
@@ -115,21 +115,104 @@ for nf in range(num_files):
 print('Please select a directory to save all results from this set of analyses.')
 results_dir = easygui.diropenbox(title='Please select the storage folder.')
 
+#Save dictionary
+dict_save_dir = os.path.join(results_dir,'tau_dict.pkl')
+f = open(dict_save_dir,"wb")
+pickle.dump(tau_data_dict,f)
+#with open(dict_save_dir, "rb") as pickle_file:
+#    tau_data_dict = pickle.load(pickle_file)
 
 #%% ALIGNING GAPE ONSET TO A TRANSITION
 
 pre_taste_time = 2000
 
-#tau for all trials of each taste 
+#save folders
+gape_align_cp_dir = os.path.join(results_dir,'gape_align_plots')
+if os.path.isdir(gape_align_cp_dir) == False:
+	os.mkdir(gape_align_cp_dir)
+	
+cp_stats_dir = os.path.join(results_dir,'cp_stats_plots')
+if os.path.isdir(cp_stats_dir) == False:
+	os.mkdir(cp_stats_dir)
+
+#tau for all trials of each dataset 
 tau_data = []
 tau_data_names = []
-for nf in range(len(data_dict)):
-	given_name = data_dict[nf]['given_name']
-	scaled_mode_tau = data_dict[nf]['scaled_mode_tau']
+first_gapes_data = []
+preceding_transitions = []
+for nf in range(len(tau_data_dict)):
+	given_name = tau_data_dict[nf]['given_name']
+	#load changepoint information
+	scaled_mode_tau = tau_data_dict[nf]['scaled_mode_tau']
+	taste_list = tau_data_dict[nf]['taste_list']
 	tau_data.append(scaled_mode_tau - pre_taste_time)
+	#load first gapes information 
+	first_gapes = tau_data_dict[nf]['first_gapes']
+	first_gapes_data.append(first_gapes)
+	#transition preceding each trial's first gape
+	pre_cp_i = np.zeros(np.shape(first_gapes)[0])
+	for fg_i, fg_times in enumerate(first_gapes):
+		trial_tau = scaled_mode_tau[fg_i] - pre_taste_time
+		trial_gape_onset = fg_times[0]
+		pre_cp = np.where(trial_gape_onset - trial_tau > 0)[0][0]
+		pre_cp_i[fg_i] = pre_cp
+	preceding_transitions.append(pre_cp_i)
+	f_pre = plt.figure()
+	plt.hist(pre_cp_i)
+	plt.title('Changepoint Index Preceding First Gape')
+	plt.xlabel('Changepoint Index')
+	plt.ylabel('Number of Trials')
+	plt.savefig(f_pre,cp_stats_dir + given_name + '_cp_preceding_first_gape.png')
+	plt.savefig(f_pre,cp_stats_dir + given_name + '_cp_preceding_first_gape.svg')
+	#spike trains for trial
+	spike_trains = tau_data_dict[nf]['spike_train']
+	#plot spike train with overlaid changepoints and gape times
+	for t_i, train in spike_trains:
+		if ~np.isnan(first_gapes[t_i][0]):
+			f_i = plt.figure()
+			plt.eventplot(train,alpha=0.5,color='k')
+			x_ticks = plt.xticks()
+			x_tick_labels = x_ticks - pre_taste_time
+			plt.xticks(x_ticks,x_tick_labels)
+			for cp in scaled_mode_tau:
+				plt.axvline(cp,color='r')
+			plt.fill_between(np.arange(first_gapes[t_i][0],first_gapes[t_i][1]),min(x_ticks),max(x_ticks),alpha=0.3,color='y')
+			plt.title('Trial ' + str(t_i))
+			plt.xlabel('Time from Taste Delivery (ms)')
+			plt.ylabel('Neuron Index')
+			plt.savefig(f_i,gape_align_cp_dir + given_name + '_trial_' + str(t_i) + '.png')
+			plt.savefig(f_i,gape_align_cp_dir + 'trial_' + str(t_i) + '.svg')
 
-#load first gapes information 
+#%% Plot changes in changepoint onsets across animals
+
+tau_onsets, ax_onsets = plt.subplots(np.shape(tau_data[0][1]),figsize=(8,8))
+cm_subsection = np.linspace(0,1,len(tau_data))
+cmap = [cm.gist_rainbow(x) for x in cm_subsection]
+for nf in range(len(tau_data)):
+	nf_tau = tau_data[nf]
+	for cp_i in range(np.shape(nf_tau)[1]):
+		mu_tau = np.nanmean(nf_tau[:,cp_i])
+		sig_tau = np.nanstd(nf_tau[:,cp_i])
+		ax_onsets[cp_i].scatter(nf,mu_tau,color=cmap[nf])
+		ax_onsets[cp_i].plot([nf,nf],[mu_tau-sig_tau,mu_tau+sig_tau],color=cmap[nf])
+for ax_i in range(len(ax_onsets)):
+	ax_onsets[ax_i].ylabel('Mean Onset (ms)')
+	x_ticks = ax_onsets[ax_i].xticks()
+	ax_onsets[ax_i].xticks(x_ticks,tau_data_names)
+	ax_onsets[ax_i].x_label('Dataset')
+	ax_onsets[ax_i].title('Changepoint ' + str(ax_i))
+	ax_onsets[ax_i].legend()
+tau_onsets.tight_layout()
+plt.savefig(tau_onsets,cp_stats_dir + 'cp_onsets.png')
+plt.savefig(tau_onsets,cp_stats_dir + 'cp_onsets.svg')
+		
+
+
+#%%
+
 #first_sac_gapes: trial x time (onset and offset times of first gapes in each trial)
+#first_gape_save_dir = os.path.join(anim_dir,'gape_onset_plots',anim_name + '_' + anim_taste_names[t_i] + '.npy')
+
 first_sac_gapes = np.load('/media/cmazzio/large_data/CM26/CM26_CTATest_h2o_sac_nacl_qhcl_230819_101513/gape_onset_plots/CM26_CTATest_first_sac_gapes.npy')
 first_qhcl_gapes = np.load('/media/cmazzio/large_data/CM26/CM26_CTATest2_h2o_sac_ca_qhcl_230820_121050/gape_onset_plots/CM26_CTATest2_first_qhcl_gapes.npy')
 
