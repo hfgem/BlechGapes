@@ -149,6 +149,13 @@ for na in range(num_anim):
 	metadata_handler = imp_metadata([[], animal_dir])
 	dir_name1 = metadata_handler.dir_name
 	os.chdir(dir_name1)
+	#Import nonzero trials data
+	nonzero_dir = os.path.join(dir_name1,'emg_output','nonzero_trials.npy')
+	try:
+		nonzero_trials = np.load(nonzero_dir)
+	except:
+		print("Nonzero file not found in expected location, please check /emg_output/nonzero_trials.npy exists.")
+		nonzero_trials = []
 	# Open the hdf5 file
 	hf5 = tables.open_file(metadata_handler.hdf5_name, 'r+')
 	#extract data from HDf5 and get rid of dimensions with one value
@@ -170,6 +177,7 @@ for na in range(num_anim):
 		animal_gape_data.append(all_gapes[t_i,:,:])
 	animal_dict['taste_names'] = animal_taste_names
 	animal_dict['gape_data'] = animal_gape_data
+	animl_dict['nonzero_trials'] = np.array(nonzero_trials)
 	data_dict[na] = animal_dict
 
 #Analysis Storage Directory
@@ -181,7 +189,7 @@ dict_save_dir = os.path.join(results_dir,'gape_onset_dict.pkl')
 f = open(dict_save_dir,"wb")
 pickle.dump(data_dict,f)
 #with open(dict_save_dir, "rb") as pickle_file:
-#    data_dict = pickle.load(pickle_file)
+#	data_dict = pickle.load(pickle_file)
 
 #%% Process Gape Data for Analyses
 pre_time = 2000 #pre-taste time in data (ms) to subtract
@@ -291,10 +299,14 @@ for na in range(num_anim):
 	sig_pairs_first_gape_lengths = np.zeros(len(all_pairs))
 	for ap_i in range(len(all_pairs)):
 		ap = all_pairs[ap_i]
-		stat_first, p_first = mannwhitneyu(anim_first_gapes[ap[0]], anim_first_gapes[ap[1]], nan_policy='omit')
+		fg_0 = np.array(anim_first_gapes[ap[0]])
+		fg_1 = np.array(anim_first_gapes[ap[1]])
+		stat_first, p_first = mannwhitneyu(fg_0[np.where(~np.isnan(fg_0))[0]],fg_1[np.where(~np.isnan(fg_1))[0]])
 		if p_first <= 0.05:
 			sig_pairs_first_gapes[ap_i] = 1
-		stat_first_len, p_first_len = mannwhitneyu(anim_first_gape_lengths[ap[0]], anim_first_gape_lengths[ap[1]], nan_policy='omit')
+		fgl_0 = np.array(anim_first_gape_lengths[ap[0]])
+		fgl_1 = np.array(anim_first_gape_lengths[ap[1]])
+		stat_first_len, p_first_len = mannwhitneyu(fgl_0[np.where(~np.isnan(fgl_0))[0]],fgl_1[np.where(~np.isnan(fgl_1))[0]])
 		if p_first_len <= 0.05:
 			sig_pairs_first_gape_lengths[ap_i] = 1
 	#Plot box-and-whisker plots of first gapes
@@ -323,10 +335,14 @@ sig_pairs_first_gapes = np.zeros(len(all_pairs))
 sig_pairs_first_gape_lengths = np.zeros(len(all_pairs))
 for ap_i in range(len(all_pairs)):
 	ap = all_pairs[ap_i]
-	stat_first, p_first = mannwhitneyu(first_gapes[ap[0]], first_gapes[ap[1]], nan_policy='omit')
+	fg_0 = np.array(first_gapes[ap[0]])
+	fg_1 = np.array(first_gapes[ap[1]])
+	stat_first, p_first = mannwhitneyu(fg_0[np.where(~np.isnan(fg_0))[0]], fg_1[np.where(~np.isnan(fg_1))[0]])
 	if p_first <= 0.05:
 		sig_pairs_first_gapes[ap_i] = 1
-	stat_first_len, p_first_len = mannwhitneyu(first_gape_lengths[ap[0]], first_gape_lengths[ap[1]], nan_policy='omit')
+	fgl_0 = np.array(first_gape_lengths[ap[0]])
+	fgl_1 = np.array(first_gape_lengths[ap[1]])
+	stat_first_len, p_first_len = mannwhitneyu(fgl_0[np.where(~np.isnan(fgl_0))[0]], fgl_1[np.where(~np.isnan(fgl_1))[0]])
 	if p_first_len <= 0.05:
 		sig_pairs_first_gape_lengths[ap_i] = 1
 		

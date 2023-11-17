@@ -84,7 +84,7 @@ for nf in range(num_files):
 	taste_list = wanted_frame['data.taste_num']
 	print("\tThere are " + str(len(taste_list)) + " tastes available.")
 	print("\tAvailable taste indices:")
-	print("\t" + list(taste_list))
+	print(list(taste_list))
 	taste_ind = int_input("\tWhich taste do you want from this list? ")
 	wanted_frame = wanted_frame[wanted_frame['data.taste_num'] == taste_ind]
 	taste_list = wanted_frame['data.taste_num']
@@ -124,6 +124,7 @@ for nf in range(num_files):
 	gape_data_dir = easygui.diropenbox(title='\tPlease select the folder where data is stored.')
 	#Search for matching file type - ends in _gapes.npy
 	files_in_dir = os.listdir(gape_data_dir)
+	print("There are " + str(len(files_in_dir)) + " gape files in this folder.")
 	for filename in files_in_dir:
 		if filename[-10:] == '_gapes.npy':
 			bool_val = bool_input("\tIs " + filename + " the correct associated file with " + given_name + "?")
@@ -134,8 +135,8 @@ for nf in range(num_files):
 	try: #Check that something was imported
 		first_gapes = tau_data_dict[nf]['first_gapes']
 	except:
-		'First gapes file not found in given folder. Program closing - try again.'
-		quit()
+		print('First gapes file not found/selected in given folder. Did you run gape_onset.py before?')
+		print('You may want to quit this program now - it will break in later code blocks by missing this data.')
 	
 #Analysis Storage Directory
 print('Please select a directory to save all results from this set of analyses.')
