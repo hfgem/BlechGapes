@@ -155,7 +155,7 @@ for na in range(num_anim):
 		nonzero_trials = np.load(nonzero_dir)
 	except:
 		print("Nonzero file not found in expected location, please check /emg_output/nonzero_trials.npy exists.")
-		nonzero_trials = []
+		nonzero_trials = np.array([])
 	# Open the hdf5 file
 	hf5 = tables.open_file(metadata_handler.hdf5_name, 'r+')
 	#extract data from HDf5 and get rid of dimensions with one value
@@ -164,6 +164,8 @@ for na in range(num_anim):
 	animal_gape_data = []
 	num_tastes = np.shape(all_gapes)[0]
 	animal_taste_names = []
+	nonzero_gape_data = []
+	nonzero_trial_data = []
 	#Prompt user to select the dimension of each taste and the name
 	print("There is gape data in this directory for " + str(num_tastes) + " tastes.")
 	print("Please select which tastes to keep in the analysis from this list of indices: " + str(np.arange(num_tastes)))
@@ -175,9 +177,17 @@ for na in range(num_anim):
 		taste_name = input("\tName of tastant with index " + str(t_i) + ": ")
 		animal_taste_names.append(taste_name)
 		animal_gape_data.append(all_gapes[t_i,:,:])
+		if len(nonzero_trials) > 0:
+			nonzero_trial_ind = np.where(nonzero_trials[t_i,:])[0]
+			nonzero_trial_data.append(nonzero_trial_ind)
+			nonzero_gape_data.append(all_gapes[t_i,nonzero_trial_ind,:])
+		else:
+			nonzero_trial_data.append(np.array([]))
+			nonzero_gape_data.append(np.array([]))
 	animal_dict['taste_names'] = animal_taste_names
 	animal_dict['gape_data'] = animal_gape_data
-	animl_dict['nonzero_trials'] = np.array(nonzero_trials)
+	animal_dict['nonzero_trials'] = np.array(nonzero_trials)
+	animal_dict['nonzero_gape_data'] = nonzero_gape_data
 	data_dict[na] = animal_dict
 
 #Analysis Storage Directory
@@ -197,11 +207,16 @@ pre_time = 2000 #pre-taste time in data (ms) to subtract
 gape_data_lengths = []
 num_anim = len(data_dict)
 for na in range(num_anim):
+	anim_nonzero_data = data_dict[na]['nonzero_trials']
 	anim_gape_data = data_dict[na]['gape_data']
+	anim_nonzero_gape_data = data_dict[na]['nonzero_gape_data']
 	num_tastes = len(data_dict[na]['taste_names'])
 	anim_bool_gape_data = []
 	for nt in range(num_tastes):
-		taste_gape = anim_gape_data[nt]
+		if len(anim_nonzero_data[nt]) > 0:
+			taste_gape = anim_nonzero_gape_data[nt]
+		else:
+			taste_gape = anim_gape_data[nt]
 		taste_gape_bool = (taste_gape > 0.5)*1
 		taste_gape_bool[:,0] = 0
 		taste_gape_bool[:,-1] = 0
