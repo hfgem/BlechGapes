@@ -92,6 +92,15 @@ for nf in range(num_files):
 	this_handler = PklHandler(pkl_path_list[0])
 	#Import changepoints for each delivery
 	scaled_mode_tau = this_handler.tau.scaled_mode_tau #num trials x num cp
+	#Import Hannah's CPs for each delivery
+	hannah_tau_dir = os.path.join(data_dir,'Changepoint_Calculations','All_Taste_CPs','pop')
+	hannah_tau_dir_files = os.listdir(hannah_tau_dir)
+	for filename in hannah_tau_dir_files:
+		if filename[-4:] == '.npy':
+			bool_val = bool_input('\tIs ' + filename + ' the correct associated cp file?')
+			if bool_val == 'y':
+				hannah_cp =  np.load(os.path.join(hannah_tau_dir,filename))
+				break
 	#Import spikes following each taste delivery
 	spike_train = this_handler.firing.raw_spikes
 	#Store changepoint and spike data in dictionary
@@ -104,6 +113,10 @@ for nf in range(num_files):
 	tau_data_dict[nf]['taste_list'] = taste_list
 	tau_data_dict[nf]['states'] = desired_states
 	tau_data_dict[nf]['scaled_mode_tau'] = scaled_mode_tau
+	try:
+		tau_data_dict[nf]['hannah_cp'] = hannah_cp
+	except:
+		"no hannah cp data found"
 	tau_data_dict[nf]['spike_train'] = spike_train
 	#Import associated emg data
 	try:
@@ -147,7 +160,7 @@ dict_save_dir = os.path.join(results_dir,'tau_dict.pkl')
 f = open(dict_save_dir,"wb")
 pickle.dump(tau_data_dict,f)
 #with open(dict_save_dir, "rb") as pickle_file:
-#    tau_data_dict = pickle.load(pickle_file)
+#	tau_data_dict = pickle.load(pickle_file)
 
 #%% ALIGNING GAPE ONSET TO A TRANSITION
 
@@ -168,19 +181,38 @@ tau_data = []
 tau_data_names = []
 first_gapes_data = []
 preceding_transitions = []
+preceding_transitions_hannah = []
 for nf in range(len(tau_data_dict)):
 	given_name = tau_data_dict[nf]['given_name']
 	tau_data_names.extend([given_name])
 	#load changepoint information
 	scaled_mode_tau = tau_data_dict[nf]['scaled_mode_tau']
+	hannah_cp = tau_data_dict[nf]['hannah_cp']
+	#Plot the two sets of changepoints side by side
+	hannah_cp_scaled = hannah_cp[:,1:] - np.expand_dims(hannah_cp[:,0],1)
+	f_cp = plt.figure(figsize=(8,8))
+	num_cp_plot = np.shape(scaled_mode_tau)[1]
+	for cp_i in range(num_cp_plot):
+		plt.subplot(num_cp_plot,1,cp_i + 1)
+		plt.hist(scaled_mode_tau[:,cp_i] - pre_taste_time,color='blue',alpha=0.5,label='Tau')
+		plt.hist(hannah_cp_scaled[:,cp_i],color='green',alpha=0.5,label='CP')
+		plt.legend()
+		plt.title('CP ' + str(cp_i))
+	plt.tight_layout()
+	f_cp.savefig(os.path.join(cp_stats_dir,given_name + '_cp_distributions.png'))
+	f_cp.savefig(os.path.join(cp_stats_dir,given_name + '_cp_distributions.svg'))
+	plt.close(f_cp)
+	#Calculate cp preceding gape
 	taste_list = tau_data_dict[nf]['taste_list']
 	tau_data.append(scaled_mode_tau - pre_taste_time)
 	#load first gapes information 
 	first_gapes = tau_data_dict[nf]['first_gapes']
 	first_gapes_data.append(first_gapes)
 	#transition preceding each trial's first gape
-	pre_cp_i = np.zeros(np.shape(first_gapes)[0])
+	pre_cp_i = np.zeros(np.shape(first_gapes)[0]) #From scaled mode tau
+	pre_cp_i_hannah = np.zeros(np.shape(first_gapes)[0]) #From scaled mode tau
 	for fg_i, fg_times in enumerate(first_gapes):
+		#scaled mode tau
 		trial_tau = scaled_mode_tau[fg_i] - pre_taste_time
 		if len(trial_tau) > max_num_tau:
 			max_num_tau = len(trial_tau)
@@ -188,17 +220,45 @@ for nf in range(len(tau_data_dict)):
 		if ~np.isnan(trial_gape_onset):
 			try:
 				pre_cp = np.where(trial_gape_onset - trial_tau > 0)[0][-1]
-				pre_cp_i[fg_i] = pre_cp
+				pre_cp_i[fg_i] = pre_cp + 1
 			except:
-				pre_cp_i[fg_i] = np.nan
+				try:
+					pre_cp = np.where(trial_gape_onset > 0)[0][-1]
+					pre_cp_i[fg_i] = 0
+				except:
+					pre_cp_i[fg_i] = np.nan
 		else:
 			pre_cp_i[fg_i] = np.nan
+		#hannah cp
+		trial_cp = hannah_cp[fg_i,1:] - hannah_cp[fg_i,0]
+		if len(trial_cp) > max_num_tau:
+			max_num_tau = len(trial_tau)
+		if ~np.isnan(trial_gape_onset):
+			try:
+				pre_cp = np.where(trial_gape_onset - trial_cp > 0)[0][-1]
+				pre_cp_i_hannah[fg_i] = pre_cp + 1
+			except:
+				try:
+					pre_cp = np.where(trial_gape_onset > 0)[0][-1]
+					pre_cp_i_hannah[fg_i] = 0
+				except:
+					pre_cp_i_hannah[fg_i] = np.nan
+		else:
+			pre_cp_i_hannah[fg_i] = np.nan
 	preceding_transitions.append(pre_cp_i)
+	preceding_transitions_hannah.append(pre_cp_i_hannah)
 	f_pre = plt.figure()
+	plt.subplot(1,2,1)
 	plt.hist(pre_cp_i)
-	plt.title('Changepoint Index Preceding First Gape')
+	plt.title('Tau Index Pre-Gape')
 	plt.xlabel('Changepoint Index')
 	plt.ylabel('Number of Trials')
+	plt.subplot(1,2,2)
+	plt.hist(pre_cp_i_hannah)
+	plt.title('CP Index Pre-Gape')
+	plt.xlabel('Changepoint Index')
+	plt.ylabel('Number of Trials')
+	plt.suptitle('Changepoint Index Preceding First Gape')
 	f_pre.savefig(os.path.join(cp_stats_dir,given_name + '_cp_preceding_first_gape.png'))
 	f_pre.savefig(os.path.join(cp_stats_dir,given_name + '_cp_preceding_first_gape.svg'))
 	plt.close(f_pre)
@@ -222,6 +282,26 @@ for nf in range(len(tau_data_dict)):
 			plt.ylabel('Neuron Index')
 			f_i.savefig(os.path.join(gape_align_cp_dir,given_name + '_trial_' + str(t_i) + '.png'))
 			f_i.savefig(os.path.join(gape_align_cp_dir,given_name + '_trial_' + str(t_i) + '.svg'))
+			plt.close(f_i)
+	#plot spike train with overlaid hannah changepoints and gape times
+	for t_i, train in enumerate(spike_trains):
+		if ~np.isnan(first_gapes[t_i][0]): #Only plot if gape occurs
+			num_neur = np.shape(train)[0]
+			train_indices = [list(np.where(train[n_i] == 1)[0]) for n_i in range(num_neur)]
+			f_i = plt.figure()
+			plt.eventplot(train_indices,alpha=0.5,color='k')
+			x_ticks = plt.xticks()
+			x_tick_labels = x_ticks[0] - pre_taste_time
+			plt.xticks(x_ticks[0],x_tick_labels)
+			trial_cp = hannah_cp[t_i,1:] - hannah_cp[t_i,0]
+			for cp in trial_cp:
+				plt.axvline(cp + pre_taste_time,color='r')
+			plt.fill_between(np.arange(first_gapes[t_i][0] + pre_taste_time,first_gapes[t_i][1] + pre_taste_time),0,num_neur,alpha=0.3,color='y')
+			plt.title('Trial ' + str(t_i))
+			plt.xlabel('Time from Taste Delivery (ms)')
+			plt.ylabel('Neuron Index')
+			f_i.savefig(os.path.join(gape_align_cp_dir,given_name + '_trial_' + str(t_i) + '_hannah_cp.png'))
+			f_i.savefig(os.path.join(gape_align_cp_dir,given_name + '_trial_' + str(t_i) + '_hannah_cp.svg'))
 			plt.close(f_i)
 
 #%% Plot changes in changepoint onsets across animals
@@ -247,33 +327,64 @@ tau_onsets.savefig(os.path.join(cp_stats_dir,'cp_onsets.svg'))
 
 #%% Plot preceding transition stats
 
+cp_labels = ['CP ' + str(i) for i in range(max_num_tau+1)]
+
 #Histogram
 plt.figure()
 n = plt.hist(preceding_transitions,label=tau_data_names)
 plt.title('Transition Immediately Preceding Gape Onset')
-cp_labels = ['CP ' + str(i) for i in range(max_num_tau)]
-plt.xticks(np.arange(max_num_tau),labels=cp_labels)
+plt.legend()
+plt.xticks(np.arange(max_num_tau+1),labels=cp_labels)
 plt.xlabel('Changepoint')
 plt.ylabel('Number of Gape Trials')
+plt.tight_layout()
+plt.savefig(os.path.join(cp_stats_dir,'preceding_tau_hist.png'))
+plt.savefig(os.path.join(cp_stats_dir,'preceding_tau_hist.svg'))
+
+#Histogram
+plt.figure()
+n = plt.hist(preceding_transitions_hannah,label=tau_data_names)
+plt.title('Transition Immediately Preceding Gape Onset')
+plt.legend()
+plt.xticks(np.arange(max_num_tau+1),labels=cp_labels)
+plt.xlabel('Changepoint')
+plt.ylabel('Number of Gape Trials')
+plt.tight_layout()
 plt.savefig(os.path.join(cp_stats_dir,'preceding_cp_hist.png'))
 plt.savefig(os.path.join(cp_stats_dir,'preceding_cp_hist.svg'))
 
 
 #Pie charts
-f_pie, ax_pie = plt.subplots(len(preceding_transitions))
+f_pie, ax_pie = plt.subplots(len(preceding_transitions), figsize=(10,10))
 for nf in range(len(preceding_transitions)):
 	nf_pt = np.array(preceding_transitions[nf])
 	nf_pt_nan = np.isnan(nf_pt)
 	nf_pt_nonan = nf_pt[np.where(~nf_pt_nan)[0]]
-	cp_counts = np.zeros(max_num_tau)
-	for cp_i in range(max_num_tau):
+	cp_counts = np.zeros(max_num_tau+1)
+	for cp_i in range(max_num_tau+1):
 		cp_counts[cp_i] = len(np.where(nf_pt_nonan == cp_i)[0])
-	cp_labels = ['CP ' + str(i) for i in range(max_num_tau)]
-	ax_pie[nf].pie(cp_counts,label=cp_labels,autopct='%1.1f%%')
+	ax_pie[nf].pie(cp_counts,labels=cp_labels,autopct='%1.1f%%')
 	ax_pie[nf].set_title(tau_data_names[nf])
+plt.tight_layout()
+plt.savefig(os.path.join(cp_stats_dir,'preceding_tau_pie.png'))
+plt.savefig(os.path.join(cp_stats_dir,'preceding_tau_pie.svg'))
+
+#Pie charts
+f_pie, ax_pie = plt.subplots(len(preceding_transitions_hannah), figsize=(10,10))
+for nf in range(len(preceding_transitions_hannah)):
+	nf_pt = np.array(preceding_transitions_hannah[nf])
+	nf_pt_nan = np.isnan(nf_pt)
+	nf_pt_nonan = nf_pt[np.where(~nf_pt_nan)[0]]
+	cp_counts = np.zeros(max_num_tau+1)
+	for cp_i in range(max_num_tau+1):
+		cp_counts[cp_i] = len(np.where(nf_pt_nonan == cp_i)[0])
+	ax_pie[nf].pie(cp_counts,labels=cp_labels,autopct='%1.1f%%')
+	ax_pie[nf].set_title(tau_data_names[nf])
+plt.tight_layout()
 plt.savefig(os.path.join(cp_stats_dir,'preceding_cp_pie.png'))
 plt.savefig(os.path.join(cp_stats_dir,'preceding_cp_pie.svg'))
 
+#Add plots on fraction of lower-cp index onsets than higher (somehow)
 
 #%% PLOTTING CHANGEPOINT & EMG OVERLAY
 
@@ -288,25 +399,25 @@ num_wanted_trials = len(sac_gape_trials)
 times = len(sac_emg_filt[1])
 sac_gape_emg_filt = np.zeros(shape = (num_wanted_trials, sac_emg_filt.shape[1]))
 for trial_ind, trial in enumerate(sac_gape_trials):
-    for time_ind, time in enumerate(range(times)):
-        this_gape_emg_filt = sac_emg_filt[trial,time]
-        sac_gape_emg_filt[trial_ind,time_ind] = this_gape_emg_filt
+	for time_ind, time in enumerate(range(times)):
+		this_gape_emg_filt = sac_emg_filt[trial,time]
+		sac_gape_emg_filt[trial_ind,time_ind] = this_gape_emg_filt
 
 #make axes
 fig,ax = plt.subplots(sac_emg_filt.shape[0],1, 
-                       sharex=True, sharey=True,
-                       figsize = (10, sac_emg_filt.shape[0]))
+					   sharex=True, sharey=True,
+					   figsize = (10, sac_emg_filt.shape[0]))
 #plot tau over emg traces
 i =0
 for this_dat, this_ax, this_tau in zip(sac_emg_filt, ax.flatten(), sac_tau+2000):
-    this_ax.plot(this_dat)
-    for x in this_tau:
-        
-        this_ax.axvline(x, color = 'red')
-    if i in sac_gape_trials:
-        index_ = np.where(sac_gape_trials == i)[0][0]
-        this_ax.scatter(sac_gape_onset[index_]+2000, 800, s=50, c='green')
-    i = i+1
+	this_ax.plot(this_dat)
+	for x in this_tau:
+		
+		this_ax.axvline(x, color = 'red')
+	if i in sac_gape_trials:
+		index_ = np.where(sac_gape_trials == i)[0][0]
+		this_ax.scatter(sac_gape_onset[index_]+2000, 800, s=50, c='green')
+	i = i+1
 
 #for quinine
 
@@ -321,25 +432,25 @@ num_wanted_trials = len(qhcl_gape_trials)
 times = len(qhcl_emg_filt[1])
 qhcl_gape_emg_filt = np.zeros(shape = (num_wanted_trials, qhcl_emg_filt.shape[1]))
 for trial_ind, trial in enumerate(qhcl_gape_trials):
-    for time_ind, time in enumerate(range(times)):
-        this_gape_emg_filt = qhcl_emg_filt[trial,time]
-        qhcl_gape_emg_filt[trial_ind,time_ind] = this_gape_emg_filt
+	for time_ind, time in enumerate(range(times)):
+		this_gape_emg_filt = qhcl_emg_filt[trial,time]
+		qhcl_gape_emg_filt[trial_ind,time_ind] = this_gape_emg_filt
 
 #make axes
 fig,ax = plt.subplots(qhcl_emg_filt.shape[0],1, 
-                       sharex=True, sharey=True,
-                       figsize = (10, qhcl_emg_filt.shape[0]))
+					   sharex=True, sharey=True,
+					   figsize = (10, qhcl_emg_filt.shape[0]))
 #plot tau over emg traces
 i =0
 for this_dat, this_ax, this_tau in zip(qhcl_emg_filt, ax.flatten(), qhcl_tau+2000):
-    this_ax.plot(this_dat)
-    for x in this_tau:
-        
-        this_ax.axvline(x, color = 'red')
-    if i in qhcl_gape_trials:
-        index_ = np.where(qhcl_gape_trials == i)[0][0]
-        this_ax.scatter(qhcl_gape_onset[index_]+2000, 800, s=50, c='green')
-    i = i+1
+	this_ax.plot(this_dat)
+	for x in this_tau:
+		
+		this_ax.axvline(x, color = 'red')
+	if i in qhcl_gape_trials:
+		index_ = np.where(qhcl_gape_trials == i)[0][0]
+		this_ax.scatter(qhcl_gape_onset[index_]+2000, 800, s=50, c='green')
+	i = i+1
 
 
 #%%
@@ -353,36 +464,36 @@ new_sac_gape_tau = sac_gape_tau +2000
 color_list = ['lightcoral','teal', 'red']
 
 fig,ax = plt.subplots(len(plot_trials_sac),1,
-        sharey=True, sharex=True, figsize = (15,20))
+		sharey=True, sharex=True, figsize = (15,20))
 
 for trial in range(len(plot_trials_sac)):
-    ax[trial].plot(time_vec, sac_emg_filt[plot_trials_sac[trial], time_vec], color ='black')
+	ax[trial].plot(time_vec, sac_emg_filt[plot_trials_sac[trial], time_vec], color ='black')
 
 
-#for overlaying epochs on EMG traces    
-    for cp in range(3): 
-        start = new_sac_gape_tau[trial,cp]
-        if cp < 2:
-            end = new_sac_gape_tau[trial,cp+1]
-        else:
-            end = time_vec[-1]
-        ax[trial].axvspan(start, end, color = color_list[cp], alpha = 0.7)
+#for overlaying epochs on EMG traces	
+	for cp in range(3): 
+		start = new_sac_gape_tau[trial,cp]
+		if cp < 2:
+			end = new_sac_gape_tau[trial,cp+1]
+		else:
+			end = time_vec[-1]
+		ax[trial].axvspan(start, end, color = color_list[cp], alpha = 0.7)
 
-    #ax[trial].set_ylim([1500, 4000])
-    ax[trial].tick_params(axis="y", labelsize=20)
-    ax[trial].axvline(2000, color='gray', linewidth = 4, linestyle = 'dashed')
+	#ax[trial].set_ylim([1500, 4000])
+	ax[trial].tick_params(axis="y", labelsize=20)
+	ax[trial].axvline(2000, color='gray', linewidth = 4, linestyle = 'dashed')
 
 
-#quinine    
+#quinine	
 plot_trials_qhcl = [1,2,9,12]  
 time_vec_qhcl = np.arange(1500,4001)
 new_sac_gape_tau = sac_gape_tau +2000  
 
 fig,ax = plt.subplots(len(plot_trials_qhcl),1,
-        sharey=True, sharex=True, figsize = (15,20))
+		sharey=True, sharex=True, figsize = (15,20))
 
 for trial in range(len(plot_trials_qhcl)):
-    ax[trial].plot(time_vec, qhcl_emg_filt[plot_trials_qhcl[trial], time_vec], color ='black')
+	ax[trial].plot(time_vec, qhcl_emg_filt[plot_trials_qhcl[trial], time_vec], color ='black')
 
 
 
@@ -391,7 +502,7 @@ for trial in range(len(plot_trials_qhcl)):
 
 
 
-    
+	
  
 
 
@@ -402,31 +513,31 @@ for trial in range(len(plot_trials_qhcl)):
 #%%
 #inds = list(np.ndindex(ax.shape))
 for trial in range(len(plot_trials_sac)):
-    #plot emg signal
-    ax[trial].plot(time_vec, cut_emg_filt[taste_index,wanted_trials[trial]].flatten(), color ='black')
-    #plot changepoints
-    for tau_i in range(model_parameters['states']-2):
-        start = emg_tau[wanted_trials[trial]][tau_i]
-        if tau_i < model_parameters['states']-1:
-            end = emg_tau[wanted_trials[trial]][tau_i+1]
-        else:
-            end = time_vec[-1]
-        ax[trial].axvspan(start, end,
-            color= color_list[tau_i],
-            alpha = 0.7)
-    #set axis range
-    ax[trial].set_ylim([-1000, 1000])
-    ax[trial].tick_params(axis="y", labelsize=25)
-    ax[trial].axvline(0, color='gray', linewidth = 4, linestyle = 'dashed')
+	#plot emg signal
+	ax[trial].plot(time_vec, cut_emg_filt[taste_index,wanted_trials[trial]].flatten(), color ='black')
+	#plot changepoints
+	for tau_i in range(model_parameters['states']-2):
+		start = emg_tau[wanted_trials[trial]][tau_i]
+		if tau_i < model_parameters['states']-1:
+			end = emg_tau[wanted_trials[trial]][tau_i+1]
+		else:
+			end = time_vec[-1]
+		ax[trial].axvspan(start, end,
+			color= color_list[tau_i],
+			alpha = 0.7)
+	#set axis range
+	ax[trial].set_ylim([-1000, 1000])
+	ax[trial].tick_params(axis="y", labelsize=25)
+	ax[trial].axvline(0, color='gray', linewidth = 4, linestyle = 'dashed')
  
-#    ax[trial].plt.x_ticks(fontsize=25)
-#    ax[trial].tick_params(axis='y', which='minor', labelsize=20 )
-#    ax[trial].set_ylabel('hi')
-    if trial == 0:
-        this_taste = tastes[taste_index]
-#        ax[trial].set_title(this_taste)
-    if trial == emg_filt.shape[1]-1:
-        ax[trial].set_xlabel('Time post-stim (ms)')
+#	ax[trial].plt.x_ticks(fontsize=25)
+#	ax[trial].tick_params(axis='y', which='minor', labelsize=20 )
+#	ax[trial].set_ylabel('hi')
+	if trial == 0:
+		this_taste = tastes[taste_index]
+#		ax[trial].set_title(this_taste)
+	if trial == emg_filt.shape[1]-1:
+		ax[trial].set_xlabel('Time post-stim (ms)')
 #plt.suptitle('Red --> Not significant, Blue --> Significant')
 plt.subplots_adjust(top = 0.95)
 #plt.yticks(fontsize = 20)
@@ -448,13 +559,13 @@ fig.savefig('emg_filtered_plots_with_changepoint_select_trials' + str(tastes[tas
 
 # #make axes
 # fig,ax = plt.subplots(qhcl_gape_emg_filt.shape[0],1, 
-#                        sharex=True, sharey=True,
-#                        figsize = (10, qhcl_gape_emg_filt.shape[0]))
+#						sharex=True, sharey=True,
+#						figsize = (10, qhcl_gape_emg_filt.shape[0]))
 # #plot tau over emg traces
 # for this_dat, this_ax, this_tau in zip(qhcl_gape_emg_filt, ax.flatten(), qhcl_gape_tau+2000):
-#     this_ax.plot(this_dat)
-#     for x in this_tau:
-#         this_ax.axvline(x, color = 'red')
+#	 this_ax.plot(this_dat)
+#	 for x in this_tau:
+#		 this_ax.axvline(x, color = 'red')
 
 
 
@@ -462,8 +573,8 @@ fig.savefig('emg_filtered_plots_with_changepoint_select_trials' + str(tastes[tas
 
 
 # fig,ax = plt.subplots(sac_emg_filt.shape[0],1, 
-#                        sharex=True, sharey=True,
-#                        figsize = (10, sac_emg_filt.shape[0]))
+#						sharex=True, sharey=True,
+#						figsize = (10, sac_emg_filt.shape[0]))
 
 
 
@@ -495,9 +606,9 @@ print('Statistics=%.3f, p=%.3f' % (stat, p))
 # interpret
 alpha = 0.05
 if p > alpha:
-    print('Same distribution (fail to reject H0)')
+	print('Same distribution (fail to reject H0)')
 else:
-    print('Different distribution (reject H0)')
+	print('Different distribution (reject H0)')
 
 
 #find correlation between gape onset time and transition 1 time for sac
@@ -514,7 +625,7 @@ corr, p = pearsonr(sac_qhcl_tau_gape_trials, sac_qhcl_gape_onsets_gape_trials)
 # =============================================================================
 # inds = np.array(sac_qhcl_gape_onsets_gape_trials) < 750
 # pearsonr(np.array(sac_qhcl_tau_gape_trials)[inds], 
-#          np.array(sac_qhcl_gape_onsets_gape_trials)[inds])
+#		  np.array(sac_qhcl_gape_onsets_gape_trials)[inds])
 # =============================================================================
 
 print(f'Pearsons correlation sac & qhcl: {round(corr, 3)}')
