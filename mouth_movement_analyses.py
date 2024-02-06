@@ -21,31 +21,31 @@ from scipy.signal import find_peaks, peak_widths
 #%% Function definition
 
 def int_input(prompt):
-    #This function asks a user for an integer input
-    int_loop = 1    
-    while int_loop == 1:
-        response = input(prompt)
-        try:
-            int_val = int(response)
-            int_loop = 0
-        except:
-            print("\tERROR: Incorrect data entry, please input an integer.")
-    
-    return int_val
+	#This function asks a user for an integer input
+	int_loop = 1	
+	while int_loop == 1:
+		response = input(prompt)
+		try:
+			int_val = int(response)
+			int_loop = 0
+		except:
+			print("\tERROR: Incorrect data entry, please input an integer.")
+	
+	return int_val
 
 def bool_input(prompt):
-    #This function asks a user for an integer input
-    bool_loop = 1    
-    while bool_loop == 1:
-        print("Respond with Y/y/N/n:")
-        response = input(prompt)
-        if (response.lower() != 'y')*(response.lower() != 'n'):
-            print("\tERROR: Incorrect data entry, only give Y/y/N/n.")
-        else:
-            bool_val = response.lower()
-            bool_loop = 0
-    
-    return bool_val
+	#This function asks a user for an integer input
+	bool_loop = 1	
+	while bool_loop == 1:
+		print("Respond with Y/y/N/n:")
+		response = input(prompt)
+		if (response.lower() != 'y')*(response.lower() != 'n'):
+			print("\tERROR: Incorrect data entry, only give Y/y/N/n.")
+		else:
+			bool_val = response.lower()
+			bool_loop = 0
+	
+	return bool_val
 
 #%% Load all files to be analyzed
 
@@ -54,82 +54,82 @@ desired_states = 4 #which number of states dataset to use
 #Prompt user for the number of datasets needed in the analysis
 num_files = int_input("How many data files do you need to import for this analysis (integer value)? ")
 if num_files >= 1:
-    print("Multiple file import selected.")
+	print("Multiple file import selected.")
 else:
-    print("Single file import selected.")
+	print("Single file import selected.")
 
 #Pull all data into a dictionary
 emg_data_dict = dict()
 for nf in range(num_files):
-    #Directory selection
-    print("Please select the folder where the data # " + str(nf+1) + " is stored.")
-    data_dir = easygui.diropenbox(title='Please select the folder where data is stored.')
-    given_name = input("\tHow would you rename " + data_dir.split('/')[-1] + "? ")
-    emg_data_dict[nf] = dict()
-    emg_data_dict[nf]['given_name'] = given_name
-    #Import associated raw emg data
-    try:
-        emg_filt = np.load(os.path.join(data_dir,'emg_output','emg','emg_filt.npy')) #(num_tastes,num_trials,time) #2000 pre, 5000 post
-        [num_tastes, max_num_trials, num_time] = np.shape(emg_filt)
-        emg_data_dict[nf]['emg_filt'] = emg_filt
-        emg_data_dict[nf]['num_tastes'] = num_tastes
-        emg_data_dict[nf]['max_num_trials'] = max_num_trials
-        emg_data_dict[nf]['num_time'] = num_time
-        taste_names = []
-        for t_i in range(num_tastes):
-            taste_names.append(input("What is the name of taste " + str(t_i+1) + ": "))
-        emg_data_dict[nf]['taste_names'] = taste_names
-        print("\tEmg filtered data successfully imported for dataset.")
-    except:
-        print("\tEmg filtered data not imported successfully.")
-        bool_val = bool_input("\tIs there an emg_filt.npy file to import?")
-        if bool_val == 'y':
-            emg_filt_data_dir = easygui.diropenbox(title='\tPlease select the folder where emg_filt.npy is stored.')
-            emg_filt = np.load(os.path.join(emg_filt_data_dir,'emg_filt.npy'))
-            [num_tastes, max_num_trials, num_time] = np.shape(emg_filt)
-            emg_data_dict[nf]['emg_filt'] = emg_filt
-            emg_data_dict[nf]['num_tastes'] = num_tastes
-            emg_data_dict[nf]['max_num_trials'] = max_num_trials
-            emg_data_dict[nf]['num_time'] = num_time
-            taste_names = []
-            for t_i in range(num_tastes):
-                taste_names.append(input("What is the name of taste " + str(t_i+1)+ ": "))
-            emg_data_dict[nf]['taste_names'] = taste_names
-        else:
-            print("\tMoving On.")
+	#Directory selection
+	print("Please select the folder where the data # " + str(nf+1) + " is stored.")
+	data_dir = easygui.diropenbox(title='Please select the folder where data is stored.')
+	given_name = input("\tHow would you rename " + data_dir.split('/')[-1] + "? ")
+	emg_data_dict[nf] = dict()
+	emg_data_dict[nf]['given_name'] = given_name
+	#Import associated raw emg data
+	try:
+		emg_filt = np.load(os.path.join(data_dir,'emg_output','emg','emg_filt.npy')) #(num_tastes,num_trials,time) #2000 pre, 5000 post
+		[num_tastes, max_num_trials, num_time] = np.shape(emg_filt)
+		emg_data_dict[nf]['emg_filt'] = emg_filt
+		emg_data_dict[nf]['num_tastes'] = num_tastes
+		emg_data_dict[nf]['max_num_trials'] = max_num_trials
+		emg_data_dict[nf]['num_time'] = num_time
+		taste_names = []
+		for t_i in range(num_tastes):
+			taste_names.append(input("What is the name of taste " + str(t_i+1) + ": "))
+		emg_data_dict[nf]['taste_names'] = taste_names
+		print("\tEmg filtered data successfully imported for dataset.")
+	except:
+		print("\tEmg filtered data not imported successfully.")
+		bool_val = bool_input("\tIs there an emg_filt.npy file to import?")
+		if bool_val == 'y':
+			emg_filt_data_dir = easygui.diropenbox(title='\tPlease select the folder where emg_filt.npy is stored.')
+			emg_filt = np.load(os.path.join(emg_filt_data_dir,'emg_filt.npy'))
+			[num_tastes, max_num_trials, num_time] = np.shape(emg_filt)
+			emg_data_dict[nf]['emg_filt'] = emg_filt
+			emg_data_dict[nf]['num_tastes'] = num_tastes
+			emg_data_dict[nf]['max_num_trials'] = max_num_trials
+			emg_data_dict[nf]['num_time'] = num_time
+			taste_names = []
+			for t_i in range(num_tastes):
+				taste_names.append(input("What is the name of taste " + str(t_i+1)+ ": "))
+			emg_data_dict[nf]['taste_names'] = taste_names
+		else:
+			print("\tMoving On.")
 	#Import associated enveloped emg data
-    try:
-        env = np.load(os.path.join(data_dir,'emg_output','emg','emg_env.npy')) #(num_tastes,num_trials,time) #2000 pre, 5000 post
-        emg_data_dict[nf]['env'] = env
-        print("\tEnveloped data successfully imported for dataset.")
-    except:
-        print("\tEnveloped data not imported successfully.")
-        bool_val = bool_input("\tIs there an env.npy file to import?")
-        if bool_val == 'y':
-            env_data_dir = easygui.diropenbox(title='\tPlease select the folder where env.npy is stored.')
-            env = np.load(os.path.join(emg_filt_data_dir,'emg_env.npy'))
-            emg_data_dict[nf]['env'] = env
-        else:
-            print("\tMoving On.")
-    #Import associated gapes
-    # print("\tNow import associated first gapes data with this dataset.")
-    # gape_data_dir = easygui.diropenbox(title='\tPlease select the folder where data is stored.')
-    # #Search for matching file type - ends in _gapes.npy
-    # files_in_dir = os.listdir(gape_data_dir)
-    # print("There are " + str(len(files_in_dir)) + " gape files in this folder.")
-    # for filename in files_in_dir:
-    #     if filename[-10:] == '_gapes.npy':
-    #         bool_val = bool_input("\tIs " + filename + " the correct associated file with " + given_name + "?")
-    #         if bool_val == 'y':
-    #             first_gapes =  np.load(os.path.join(gape_data_dir,filename))
-    #             emg_data_dict[nf]['first_gapes'] = first_gapes
-    #             break
-    # try: #Check that something was imported
-    #     first_gapes = emg_data_dict[nf]['first_gapes']
-    # except:
-    #     print('First gapes file not found/selected in given folder. Did you run gape_onset.py before?')
-    #     print('You may want to quit this program now - it will break in later code blocks by missing this data.')
-    
+	try:
+		env = np.load(os.path.join(data_dir,'emg_output','emg','emg_env.npy')) #(num_tastes,num_trials,time) #2000 pre, 5000 post
+		emg_data_dict[nf]['env'] = env
+		print("\tEnveloped data successfully imported for dataset.")
+	except:
+		print("\tEnveloped data not imported successfully.")
+		bool_val = bool_input("\tIs there an env.npy file to import?")
+		if bool_val == 'y':
+			env_data_dir = easygui.diropenbox(title='\tPlease select the folder where env.npy is stored.')
+			env = np.load(os.path.join(emg_filt_data_dir,'emg_env.npy'))
+			emg_data_dict[nf]['env'] = env
+		else:
+			print("\tMoving On.")
+	#Import associated gapes
+	# print("\tNow import associated first gapes data with this dataset.")
+	# gape_data_dir = easygui.diropenbox(title='\tPlease select the folder where data is stored.')
+	# #Search for matching file type - ends in _gapes.npy
+	# files_in_dir = os.listdir(gape_data_dir)
+	# print("There are " + str(len(files_in_dir)) + " gape files in this folder.")
+	# for filename in files_in_dir:
+	#	 if filename[-10:] == '_gapes.npy':
+	#		 bool_val = bool_input("\tIs " + filename + " the correct associated file with " + given_name + "?")
+	#		 if bool_val == 'y':
+	#			 first_gapes =  np.load(os.path.join(gape_data_dir,filename))
+	#			 emg_data_dict[nf]['first_gapes'] = first_gapes
+	#			 break
+	# try: #Check that something was imported
+	#	 first_gapes = emg_data_dict[nf]['first_gapes']
+	# except:
+	#	 print('First gapes file not found/selected in given folder. Did you run gape_onset.py before?')
+	#	 print('You may want to quit this program now - it will break in later code blocks by missing this data.')
+	
 #Analysis Storage Directory
 print('Please select a directory to save all results from this set of analyses.')
 results_dir = easygui.diropenbox(title='Please select the storage folder.')
@@ -147,7 +147,7 @@ pickle.dump(emg_data_dict,f)
 
 pre_taste = 2000
 post_taste = 5000
-min_inter_peak_dist = 10 #min ms apart peaks have to be to count
+min_inter_peak_dist = 50 #min ms apart peaks have to be to count
 min_gape_band = 4
 max_gape_band = 6
 
@@ -183,25 +183,42 @@ for nf in range(len(emg_data_dict)):
 				#Find peaks above 1 std. and with a preset minimum dist between
 				[peak_inds, peak_props] = find_peaks(tr_env-mu_env,prominence=sig_env,distance=min_inter_peak_dist,width=0,rel_height=0.99)
 				#Find edges of peaks using peak widths function
-				[peak_ws,_,_,_] = peak_widths(tr_env-mu_env,peak_inds)
-				peak_left = np.array([np.max((peak_inds[p_i] - peak_ws[p_i]/2,0)) for p_i in range(len(peak_inds))])
-				peak_right = np.array([np.min((peak_inds[p_i] + peak_ws[p_i]/2,pre_taste+post_taste-1)) for p_i in range(len(peak_inds))])
+# 				[peak_ws,_,_,_] = peak_widths(tr_env-mu_env,peak_inds)
+# 				peak_left = np.array([np.max((peak_inds[p_i] - peak_ws[p_i]/2,0)) for p_i in range(len(peak_inds))])
+# 				peak_right = np.array([np.min((peak_inds[p_i] + peak_ws[p_i]/2,pre_taste+post_taste-1)) for p_i in range(len(peak_inds))])
+				#Find edges using troughs
+				[trough_inds, trough_props] = find_peaks(-1*(tr_env-mu_env),prominence=sig_env,distance=min_inter_peak_dist,width=0,rel_height=0.99)
+				if len(trough_inds) < len(peak_inds):
+					try: #trough_inds has at least 1 value
+						if trough_inds[0] < peak_inds[0]:
+							peak_left = trough_inds
+							peak_right = np.concatenate((trough_inds[1:],(pre_taste+post_taste)*np.ones(1)))
+						else:
+							peak_left = np.concatenate((np.zeros(1),trough_inds))
+							peak_right =  np.concatenate((trough_inds,(pre_taste+post_taste)*np.ones(1)))
+					except:
+						print("Not enough data to gather gapes")
+						pass
+				else:
+					peak_left = trough_inds[:-1]
+					peak_right = trough_inds[1:]
+				peak_inds = peak_inds[:len(peak_left)]
 				#Plot peak heights and widths as a check
 				ax[1,0].plot(np.arange(-pre_taste,post_taste),tr_env)
 				peak_freq = np.zeros(len(peak_inds)) #Store instantaneous frequency
 				peak_amp = np.zeros(len(peak_inds))
-				jit = np.random.rand()/10
+				jit = np.random.rand()
 				for i in range(len(peak_inds)):
-				    p_i = peak_inds[i]
-				    ax[1,0].axvline(p_i-pre_taste,color='k',linestyle='dashed',alpha=0.5)
-				    w_i = peak_props['widths'][i]
-				    peak_freq[i] = 1/(w_i/1000) #Calculate instantaneous frequency
-				    w_h = peak_props['width_heights'][i]
-				    if np.mod(i,2) == 0:
-				        ax[1,0].plot([peak_left[i]-pre_taste,peak_right[i]-pre_taste],[w_h + jit,w_h + jit],color='g',linestyle='dashed',alpha=0.5)
-				    else:
-				        ax[1,0].plot([peak_left[i]-pre_taste,peak_right[i]-pre_taste],[w_h,w_h],color='g',linestyle='dashed',alpha=0.5)
-				    peak_amp[i] = tr_env[p_i]
+					p_i = peak_inds[i]
+					ax[1,0].axvline(p_i-pre_taste,color='k',linestyle='dashed',alpha=0.5)
+					w_i = peak_props['widths'][i]
+					peak_freq[i] = 1/(w_i/1000) #Calculate instantaneous frequency
+					w_h = peak_props['width_heights'][i]
+					if np.mod(i,2) == 0:
+						ax[1,0].plot([peak_left[i]-pre_taste,peak_right[i]-pre_taste],[w_h + jit,w_h + jit],color='g',linestyle='dashed',alpha=0.5)
+					else:
+						ax[1,0].plot([peak_left[i]-pre_taste,peak_right[i]-pre_taste],[w_h,w_h],color='r',linestyle='dashed',alpha=0.5)
+					peak_amp[i] = tr_env[p_i]
 				ax[1,0].set_xlim([0,1000])
 				ax[1,0].set_title('Zoom peak loc + wid')
 				#Plot instantaneous frequency
