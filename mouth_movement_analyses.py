@@ -17,6 +17,7 @@ from matplotlib import pyplot as plt
 from itertools import combinations
 from scipy import stats
 from scipy.signal import find_peaks, peak_widths
+from scipy.fft import fft, fftfreq
 
 #%% Function definition
 
@@ -139,7 +140,7 @@ dict_save_dir = os.path.join(results_dir,'emg_data_dict.pkl')
 f = open(dict_save_dir,"wb")
 pickle.dump(emg_data_dict,f)
 
-#%% Take each emg signal and break it into individual groups
+#%% Take each enveloped emg signal and pull out individual movements to test
 
 #emg_data_dict[dataset_num] contains a dictionary with keys "emg_filt" and "given_name"
 #given_name is a string of the dataset name
@@ -158,13 +159,16 @@ for nf in range(len(emg_data_dict)):
 	[num_tastes, max_num_trials, num_time] = np.shape(emg_filt)
 	emg_gapes = np.zeros((num_tastes,max_num_trials,num_time))
 	taste_names = emg_data_dict[nf]['taste_names']
+	all_taste_gapes = []
 	for t_i in range(num_tastes):
 		taste_save_dir = os.path.join(results_dir,taste_names[t_i])
 		if not os.path.isdir(taste_save_dir):
 			os.mkdir(taste_save_dir)
+		taste_gapes = np.zeros((max_num_trials,pre_taste+post_taste))
 		for tr_i in range(max_num_trials):
 			if not np.isnan(emg_filt[t_i,tr_i,0]): #Make sure a delivery actually happened - nan otherwise
-				f, ax = plt.subplots(nrows=3,ncols=2)
+				f, ax = plt.subplots(nrows=5,ncols=2,figsize=(10,10))
+				gs = ax[4, 0].get_gridspec()
 				tr_emg = emg_filt[t_i,tr_i,:].flatten() #pre_taste+post_taste length array
 				#Plot raw EMG data
 				ax[0,0].plot(np.arange(-pre_taste,post_taste),tr_emg)
@@ -182,36 +186,81 @@ for nf in range(len(emg_data_dict)):
 				sig_env = np.nanstd(tr_env[:pre_taste])
 				#Find peaks above 1 std. and with a preset minimum dist between
 				[peak_inds, peak_props] = find_peaks(tr_env-mu_env,prominence=sig_env,distance=min_inter_peak_dist,width=0,rel_height=0.99)
-				#Find edges of peaks using peak widths function
-# 				[peak_ws,_,_,_] = peak_widths(tr_env-mu_env,peak_inds)
-# 				peak_left = np.array([np.max((peak_inds[p_i] - peak_ws[p_i]/2,0)) for p_i in range(len(peak_inds))])
-# 				peak_right = np.array([np.min((peak_inds[p_i] + peak_ws[p_i]/2,pre_taste+post_taste-1)) for p_i in range(len(peak_inds))])
-				#Find edges using troughs
-				[trough_inds, trough_props] = find_peaks(-1*(tr_env-mu_env),prominence=sig_env,distance=min_inter_peak_dist,width=0,rel_height=0.99)
-				if len(trough_inds) < len(peak_inds):
-					try: #trough_inds has at least 1 value
-						if trough_inds[0] < peak_inds[0]:
-							peak_left = trough_inds
-							peak_right = np.concatenate((trough_inds[1:],(pre_taste+post_taste)*np.ones(1)))
+				#___Find edges of peaks using peak widths function
+				[peak_ws,_,_,_] = peak_widths(tr_env-mu_env,peak_inds,rel_height=0.5) #This is half-height width so double for ~full width
+				peak_left = np.array([np.max((peak_inds[p_i] - peak_ws[p_i],0)) for p_i in range(len(peak_inds))])
+				peak_right = np.array([np.min((peak_inds[p_i] + peak_ws[p_i],pre_taste+post_taste-1)) for p_i in range(len(peak_inds))])
+				#___Find edges using troughs
+# 				[trough_inds, trough_props] = find_peaks(-1*(tr_env-mu_env),prominence=sig_env,distance=min_inter_peak_dist,width=0,rel_height=0.99)
+# 				peak_left = np.zeros(len(peak_inds))
+# 				peak_right = np.zeros(len(peak_inds))
+# 				for p_i,p_val in enumerate(peak_inds):
+# 					left_trough = trough_inds[trough_inds < p_val]
+# 					if len(left_trough) > 0:
+# 						peak_left[p_i] = left_trough[np.argmin(p_val-left_trough)]-2
+# 					else:
+# 						peak_left[p_i] = 0
+# 					right_trough = trough_inds[trough_inds > p_val]
+# 					if len(right_trough) > 0:
+# 						peak_right[p_i] = right_trough[np.argmin(right_trough-p_val)]-2
+# 					else:
+# 						peak_right[p_i] = pre_taste + post_taste
+				#___Find frequency using FFT on 3-peak fit
+				peak_freq_fft = np.zeros(len(peak_inds)) #Store instantaneous fft frequency
+				for p_i in np.arange(1,len(peak_inds)-1):
+					last_peak = peak_inds[p_i-1]
+					next_peak = peak_inds[p_i+1]
+					peak_form = np.expand_dims(tr_env[last_peak:next_peak],0)
+					repeat_peak = peak_form
+					num_repeat = np.ceil(1000/np.shape(repeat_peak)[1]).astype('int')
+					for rp_i in range(num_repeat):
+						if np.mod(rp_i,2) == 0:
+							repeat_peak = np.concatenate((repeat_peak,np.fliplr(peak_form)),1)
 						else:
-							peak_left = np.concatenate((np.zeros(1),trough_inds))
-							peak_right =  np.concatenate((trough_inds,(pre_taste+post_taste)*np.ones(1)))
-					except:
-						print("Not enough data to gather gapes")
-						pass
-				else:
-					peak_left = trough_inds[:-1]
-					peak_right = trough_inds[1:]
-				peak_inds = peak_inds[:len(peak_left)]
+							repeat_peak = np.concatenate((repeat_peak,peak_form),1)
+					repeat_peak = repeat_peak.flatten()
+					fft_repeat = fft(repeat_peak)
+					fft_repeat_fr = fftfreq(len(fft_repeat),1/1000)
+					fr_sort = np.argsort(fft_repeat_fr)
+					fft_repeat_fr_sort = fft_repeat_fr[fr_sort]
+					fft_sig_sort = np.abs(fft_repeat[fr_sort])
+					fft_pos_fr = fft_repeat_fr_sort[fft_repeat_fr_sort>0]
+					fft_pos_sig = fft_sig_sort[fft_repeat_fr_sort>0]
+					freq_max = fft_pos_fr[np.argmax(fft_pos_sig)]
+					peak_freq_fft[p_i] = freq_max
+				#___Find edges using derivatives
+# 				env_deriv = np.diff(tr_env-mu_env)
+# 				env_deriv2 = np.diff(env_deriv) #peaks of second derivative are fluctuation points
+# 				[trough_inds, trough_props] = find_peaks(env_deriv2)
+# 				#Line up troughs with peaks
+# 				peak_left = np.zeros(len(peak_inds))
+# 				peak_right = np.zeros(len(peak_inds))
+# 				for p_i,p_val in enumerate(peak_inds):
+# 					left_trough = trough_inds[trough_inds < p_val]
+# 					if len(left_trough) > 0:
+# 						peak_left[p_i] = left_trough[np.argmin(p_val-left_trough)]-2
+# 					else:
+# 						peak_left[p_i] = 0
+# 					right_trough = trough_inds[trough_inds > p_val]
+# 					if len(right_trough) > 0:
+# 						peak_right[p_i] = right_trough[np.argmin(right_trough-p_val)]-2
+# 					else:
+# 						peak_right[p_i] = pre_taste + post_taste
+				#__
+				peak_left = np.floor(peak_left).astype('int')
+				peak_right = np.ceil(peak_right).astype('int')
 				#Plot peak heights and widths as a check
 				ax[1,0].plot(np.arange(-pre_taste,post_taste),tr_env)
 				peak_freq = np.zeros(len(peak_inds)) #Store instantaneous frequency
+				#NOTE: FFT frequencies equivalent to instantaneous
+# 				peak_freq_fft = np.zeros(len(peak_inds)) #Store instantaneous fft frequency
 				peak_amp = np.zeros(len(peak_inds))
 				jit = np.random.rand()
 				for i in range(len(peak_inds)):
 					p_i = peak_inds[i]
 					ax[1,0].axvline(p_i-pre_taste,color='k',linestyle='dashed',alpha=0.5)
-					w_i = peak_props['widths'][i]
+					#w_i = peak_props['widths'][i]
+					w_i = peak_right[i] - peak_left[i]
 					peak_freq[i] = 1/(w_i/1000) #Calculate instantaneous frequency
 					w_h = peak_props['width_heights'][i]
 					if np.mod(i,2) == 0:
@@ -219,19 +268,33 @@ for nf in range(len(emg_data_dict)):
 					else:
 						ax[1,0].plot([peak_left[i]-pre_taste,peak_right[i]-pre_taste],[w_h,w_h],color='r',linestyle='dashed',alpha=0.5)
 					peak_amp[i] = tr_env[p_i]
+# 					#Calculate fft for peak
+# 					peak_form = tr_env[peak_left[i]:peak_right[i]]
+# 					repeat_peak = peak_form
+# 					for rp_i in range(100):
+# 						repeat_peak = np.concatenate((repeat_peak,peak_form))
+# 					fft_repeat = fft(repeat_peak)
+# 					fft_repeat_fr = fftfreq(len(fft_repeat),1/1000)
+# 					fr_sort = np.argsort(fft_repeat_fr)
+# 					fft_repeat_fr_sort = fft_repeat_fr[fr_sort]
+# 					fft_sig_sort = np.abs(fft_repeat[fr_sort])
+# 					fft_pos_fr = fft_repeat_fr_sort[fft_repeat_fr_sort>0]
+# 					fft_pos_sig = fft_sig_sort[fft_repeat_fr_sort>0]
+# 					freq_max = fft_pos_fr[np.argmax(fft_pos_sig)]
+# 					peak_freq_fft[i] = freq_max
 				ax[1,0].set_xlim([0,1000])
 				ax[1,0].set_title('Zoom peak loc + wid')
-				#Plot instantaneous frequency
-				ax[1,1].plot(peak_inds-pre_taste,peak_freq)
-				ax[1,1].axhline(min_gape_band,linestyle='dashed',color='g')
-				ax[1,1].axhline(max_gape_band,linestyle='dashed',color='g')
-				ax[1,1].set_title('Instantaneous Frequency')
 				#Plot movement amplitude
-				ax[2,0].plot(peak_inds-pre_taste,peak_amp)
-				ax[2,0].axhline(mu_env+sig_env,linestyle='dashed',alpha=0.5)
-				ax[2,0].set_title('Peak Amplitude')
+				ax[1,1].plot(peak_inds-pre_taste,peak_amp)
+				ax[1,1].axhline(mu_env+3*sig_env,linestyle='dashed',alpha=0.5)
+				ax[1,1].set_title('Peak Amplitude')
+				#Plot instantaneous frequency
+				ax[2,0].plot(peak_inds-pre_taste,peak_freq)
+				ax[2,0].axhline(min_gape_band,linestyle='dashed',color='g')
+				ax[2,0].axhline(max_gape_band,linestyle='dashed',color='g')
+				ax[2,0].set_title('Instantaneous Frequency')
 				#Pull out gape intervals only where amplitude is above cutoff, and frequency in range
-				gape_peak_inds = np.where((peak_amp>=mu_env+sig_env)*(min_gape_band<=peak_freq)*(peak_freq<=max_gape_band))[0]
+				gape_peak_inds = np.where((peak_amp>=mu_env+3*sig_env)*(min_gape_band<=peak_freq)*(peak_freq<=max_gape_band))[0]
 				gape_starts = peak_left[gape_peak_inds]
 				gape_ends = peak_right[gape_peak_inds]
 				ax[2,1].plot(np.arange(-pre_taste,post_taste),tr_env)
@@ -239,11 +302,75 @@ for nf in range(len(emg_data_dict)):
 				for gpi in range(len(gape_peak_inds)):
 					x_vals = np.arange(gape_starts[gpi],gape_ends[gpi]) - pre_taste
 					ax[2,1].fill_between(x_vals,min_env*np.ones(len(x_vals)),max_env*np.ones(len(x_vals)),color='r',alpha=0.2)
-				#ax[2,1].set_xlim([0,2000])
 				ax[2,1].set_title('Enveloped EMG Gape Times')
+# 				#Plot first and second derivatives of env
+# 				ax[3,0].plot(np.arange(-pre_taste+1,post_taste),env_deriv)
+# 				ax[3,0].scatter(peak_left,np.zeros(len(peak_left)),alpha=0.2,color='g')
+# 				ax[3,0].scatter(peak_right,np.zeros(len(peak_right)),alpha=0.2,color='r')
+# 				ax[3,0].set_xlim([0,2000])
+# 				ax[3,0].set_title('First Derivative of Envelope')
+# 				ax[3,1].plot(np.arange(-pre_taste+2,post_taste),env_deriv2)
+# 				ax[3,1].scatter(peak_left,np.zeros(len(peak_left)),alpha=0.2,color='g')
+# 				ax[3,1].scatter(peak_right,np.zeros(len(peak_right)),alpha=0.2,color='r')
+# 				ax[3,1].set_xlim([0,2000])
+# 				ax[3,1].set_title('Second Derivative of Envelope')
+				#Plot fast fourier transform frequencies
+				gape_peak_inds_fft = np.where((peak_amp>=mu_env+3*sig_env)*(min_gape_band<=peak_freq_fft)*(peak_freq_fft<=max_gape_band))[0]
+				gape_times_fft = peak_inds[gape_peak_inds_fft]
+				gape_starts_fft = peak_left[gape_peak_inds_fft]
+				gape_ends_fft = peak_right[gape_peak_inds_fft]
+				for gtf in range(len(gape_times_fft)):
+					taste_gapes[tr_i,gape_starts_fft[gtf]:gape_ends_fft[gtf]] = 1
+				ax[3,0].plot(peak_inds-pre_taste,peak_freq_fft)
+				for gtf in gape_times_fft:
+					ax[3,0].scatter(gtf-2000,(max_gape_band+min_gape_band)/2,marker='*',color='k',alpha=0.5)
+				ax[3,0].axhline(min_gape_band,linestyle='dashed',color='g')
+				ax[3,0].axhline(max_gape_band,linestyle='dashed',color='g')
+				ax[3,0].set_title('Instantaneous FFT Frequency')
+				#Plot FFT Gape Times
+				ax[3,1].plot(np.arange(-pre_taste,post_taste),tr_env)
+				ax[3,1].axvline(0,color='k',linestyle='dashed')
+				for gpi in range(len(gape_peak_inds_fft)):
+ 					x_vals = np.arange(gape_starts_fft[gpi],gape_ends_fft[gpi]) - pre_taste
+ 					ax[3,1].fill_between(x_vals,min_env*np.ones(len(x_vals)),max_env*np.ones(len(x_vals)),color='r',alpha=0.2)
+				ax[3,1].set_title('Enveloped EMG Gape Times')
+				#Plot zoom in of gapes 2 seconds after taste delivery
+				for ax_i in ax[-1,:]:
+					ax_i.remove() #remove the underlying axes
+				axbig = f.add_subplot(gs[-1,:])
+				axbig.plot(np.arange(0,2000),tr_env[pre_taste:pre_taste+2000])
+				for gpi in range(len(gape_times_fft)):
+					if (gape_times_fft[gpi] >= pre_taste)*(gape_times_fft[gpi] <= pre_taste+2000):
+						x_vals = np.arange(gape_starts_fft[gpi],gape_ends_fft[gpi]) - pre_taste
+						axbig.fill_between(x_vals,min_env*np.ones(len(x_vals)),max_env*np.ones(len(x_vals)),color='r',alpha=0.2)
+						axbig.axvline(gape_times_fft[gpi]-pre_taste,linestyle='dashed',color='k',alpha=0.2)
+				#Clean up and save
 				f.tight_layout()
 				f.savefig(os.path.join(taste_save_dir,'emg_gapes_trial_' + str(tr_i) + '.png'))
 				f.savefig(os.path.join(taste_save_dir,'emg_gapes_trial_' + str(tr_i) + '.svg'))
 				plt.close(f)
 				emg_data_dict[nf]['gape_starts'] = gape_starts
 				emg_data_dict[nf]['gape_ends'] = gape_ends
+				emg_data_dict[nf]['gape_starts_fft'] = gape_starts_fft
+				emg_data_dict[nf]['gape_ends_fft'] = gape_ends_fft
+		all_taste_gapes.append(taste_gapes)	
+	
+	#Plot all taste gapes as image
+	f, ax = plt.subplots(nrows=1,ncols=num_tastes,figsize=(3*num_tastes,3))
+	for t_i in range(num_tastes):
+		ax[t_i].imshow(all_taste_gapes[t_i],aspect='auto')
+		ax[t_i].axvline(pre_taste,color='w',linestyle='dashed')
+		ax[t_i].set_title(taste_names[t_i])
+	f.tight_layout()
+	f.savefig(os.path.join(results_dir,'emg_gapes_fft.png'))
+	f.savefig(os.path.join(results_dir,'emg_gapes_fft.svg'))
+	plt.close(f)
+	
+	
+	
+	
+	
+#%% Plot all the fft gapes			
+				
+				
+				
