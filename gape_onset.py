@@ -234,6 +234,22 @@ for na in range(num_anim):
 		anim_gape_times.append(taste_gape_times)
 	data_dict[na]['gape_times'] = anim_gape_times
 		
+#%% Plot Boolean Gape Times
+pre_taste = 2000
+for na in range(num_anim):
+	anim_bool_gape_data = data_dict[na]['bool_gape_data']
+	animal_taste_names = animal_dict['taste_names']
+	num_tastes = len(animal_taste_names)
+	f, ax = plt.subplots(nrows=1,ncols=num_tastes,figsize=(3*num_tastes,3))
+	for t_i in range(num_tastes):
+		ax[t_i].imshow(anim_bool_gape_data[t_i],aspect='auto')
+		ax[t_i].axvline(pre_taste,color='w',linestyle='dashed')
+		ax[t_i].set_title(animal_taste_names[t_i])
+	f.tight_layout()
+	f.savefig(os.path.join(dict_save_dir,'bool_gapes.png'))
+	f.savefig(os.path.join(dict_save_dir,'bool_gapes.svg'))
+	plt.close(f)	
+	
 #%% Analyze First Gapes
 
 #Create a storage folder
