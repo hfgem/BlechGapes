@@ -8,6 +8,7 @@ Test code to try to pull out different mouth movements from emg data
 """
 
 
+
 import sys, pickle, easygui, os, tqdm
 sys.path.append('/home/cmazzio/Desktop/blech_clust/')
 from matplotlib import cm
@@ -441,5 +442,4 @@ for nf in range(len(emg_data_dict)):
 							  env_norm_full_2D,env_norm_full_clust_centers_2D,\
 								  gape_start_times_group,gape_start_times_labels)
 			
-	
 	
