@@ -8,45 +8,18 @@ Test code to try to pull out different mouth movements from emg data
 """
 
 
-import sys, pickle, easygui, os
+
+import sys, pickle, easygui, os, tqdm
 sys.path.append('/home/cmazzio/Desktop/blech_clust/')
 from matplotlib import cm
 import pylab as plt
 import numpy as np
 from matplotlib import pyplot as plt
 from itertools import combinations
-from scipy import stats
+from scipy import stats, interpolate
 from scipy.signal import find_peaks, peak_widths
 from scipy.fft import fft, fftfreq
-
-#%% Function definition
-
-def int_input(prompt):
-	#This function asks a user for an integer input
-	int_loop = 1	
-	while int_loop == 1:
-		response = input(prompt)
-		try:
-			int_val = int(response)
-			int_loop = 0
-		except:
-			print("\tERROR: Incorrect data entry, please input an integer.")
-	
-	return int_val
-
-def bool_input(prompt):
-	#This function asks a user for an integer input
-	bool_loop = 1	
-	while bool_loop == 1:
-		print("Respond with Y/y/N/n:")
-		response = input(prompt)
-		if (response.lower() != 'y')*(response.lower() != 'n'):
-			print("\tERROR: Incorrect data entry, only give Y/y/N/n.")
-		else:
-			bool_val = response.lower()
-			bool_loop = 0
-	
-	return bool_val
+from functions.mouth_movement_funcs import *
 
 #%% Load all files to be analyzed
 
@@ -151,13 +124,12 @@ min_gape_band = 4
 max_gape_band = 6
 
 for nf in range(len(emg_data_dict)):
-	print("Analyzing dataset " + emg_data_dict[nf]['given_name'])
 	dataset_name =  emg_data_dict[nf]['given_name']
 	try:
 		all_taste_gapes = emg_data_dict[nf]['taste_gapes']
 		print("Dataset " + dataset_name + " previously analyzed for gapes. ")
 		re_run = bool_input("Would you like to re-run the analysis? ")
-		if re_run == 1:
+		if re_run == 'y':
 			prev_run = 0
 		else:
 			prev_run = 1
@@ -173,11 +145,12 @@ for nf in range(len(emg_data_dict)):
 		taste_names = emg_data_dict[nf]['taste_names']
 		all_taste_gapes = []
 		for t_i in range(num_tastes):
+			print("\t Taste " + taste_names[t_i])
 			taste_save_dir = os.path.join(results_dir,taste_names[t_i])
 			if not os.path.isdir(taste_save_dir):
 				os.mkdir(taste_save_dir)
 			taste_gapes = np.zeros((max_num_trials,pre_taste+post_taste))
-			for tr_i in range(max_num_trials):
+			for tr_i in tqdm.tqdm(range(max_num_trials)):
 				if not np.isnan(emg_filt[t_i,tr_i,0]): #Make sure a delivery actually happened - nan otherwise
 					f, ax = plt.subplots(nrows=5,ncols=2,figsize=(10,10))
 					gs = ax[4, 0].get_gridspec()
@@ -202,21 +175,6 @@ for nf in range(len(emg_data_dict)):
 					[peak_ws,_,_,_] = peak_widths(tr_env-mu_env,peak_inds,rel_height=0.5) #This is half-height width so double for ~full width
 					peak_left = np.array([np.max((peak_inds[p_i] - peak_ws[p_i],0)) for p_i in range(len(peak_inds))])
 					peak_right = np.array([np.min((peak_inds[p_i] + peak_ws[p_i],pre_taste+post_taste-1)) for p_i in range(len(peak_inds))])
-					#___Find edges using troughs
-	# 				[trough_inds, trough_props] = find_peaks(-1*(tr_env-mu_env),prominence=sig_env,distance=min_inter_peak_dist,width=0,rel_height=0.99)
-	# 				peak_left = np.zeros(len(peak_inds))
-	# 				peak_right = np.zeros(len(peak_inds))
-	# 				for p_i,p_val in enumerate(peak_inds):
-	# 					left_trough = trough_inds[trough_inds < p_val]
-	# 					if len(left_trough) > 0:
-	# 						peak_left[p_i] = left_trough[np.argmin(p_val-left_trough)]-2
-	# 					else:
-	# 						peak_left[p_i] = 0
-	# 					right_trough = trough_inds[trough_inds > p_val]
-	# 					if len(right_trough) > 0:
-	# 						peak_right[p_i] = right_trough[np.argmin(right_trough-p_val)]-2
-	# 					else:
-	# 						peak_right[p_i] = pre_taste + post_taste
 					#___Find frequency using FFT on 3-peak fit
 					peak_freq_fft = np.zeros(len(peak_inds)) #Store instantaneous fft frequency
 					for p_i in np.arange(1,len(peak_inds)-1):
@@ -240,32 +198,11 @@ for nf in range(len(emg_data_dict)):
 						fft_pos_sig = fft_sig_sort[fft_repeat_fr_sort>0]
 						freq_max = fft_pos_fr[np.argmax(fft_pos_sig)]
 						peak_freq_fft[p_i] = freq_max
-					#___Find edges using derivatives
-	# 				env_deriv = np.diff(tr_env-mu_env)
-	# 				env_deriv2 = np.diff(env_deriv) #peaks of second derivative are fluctuation points
-	# 				[trough_inds, trough_props] = find_peaks(env_deriv2)
-	# 				#Line up troughs with peaks
-	# 				peak_left = np.zeros(len(peak_inds))
-	# 				peak_right = np.zeros(len(peak_inds))
-	# 				for p_i,p_val in enumerate(peak_inds):
-	# 					left_trough = trough_inds[trough_inds < p_val]
-	# 					if len(left_trough) > 0:
-	# 						peak_left[p_i] = left_trough[np.argmin(p_val-left_trough)]-2
-	# 					else:
-	# 						peak_left[p_i] = 0
-	# 					right_trough = trough_inds[trough_inds > p_val]
-	# 					if len(right_trough) > 0:
-	# 						peak_right[p_i] = right_trough[np.argmin(right_trough-p_val)]-2
-	# 					else:
-	# 						peak_right[p_i] = pre_taste + post_taste
-					#__
 					peak_left = np.floor(peak_left).astype('int')
 					peak_right = np.ceil(peak_right).astype('int')
 					#Plot peak heights and widths as a check
 					ax[1,0].plot(np.arange(-pre_taste,post_taste),tr_env)
 					peak_freq = np.zeros(len(peak_inds)) #Store instantaneous frequency
-					#NOTE: FFT frequencies equivalent to instantaneous
-	# 				peak_freq_fft = np.zeros(len(peak_inds)) #Store instantaneous fft frequency
 					peak_amp = np.zeros(len(peak_inds))
 					jit = np.random.rand()
 					for i in range(len(peak_inds)):
@@ -280,20 +217,6 @@ for nf in range(len(emg_data_dict)):
 						else:
 							ax[1,0].plot([peak_left[i]-pre_taste,peak_right[i]-pre_taste],[w_h,w_h],color='r',linestyle='dashed',alpha=0.5)
 						peak_amp[i] = tr_env[p_i]
-	# 					#Calculate fft for peak
-	# 					peak_form = tr_env[peak_left[i]:peak_right[i]]
-	# 					repeat_peak = peak_form
-	# 					for rp_i in range(100):
-	# 						repeat_peak = np.concatenate((repeat_peak,peak_form))
-	# 					fft_repeat = fft(repeat_peak)
-	# 					fft_repeat_fr = fftfreq(len(fft_repeat),1/1000)
-	# 					fr_sort = np.argsort(fft_repeat_fr)
-	# 					fft_repeat_fr_sort = fft_repeat_fr[fr_sort]
-	# 					fft_sig_sort = np.abs(fft_repeat[fr_sort])
-	# 					fft_pos_fr = fft_repeat_fr_sort[fft_repeat_fr_sort>0]
-	# 					fft_pos_sig = fft_sig_sort[fft_repeat_fr_sort>0]
-	# 					freq_max = fft_pos_fr[np.argmax(fft_pos_sig)]
-	# 					peak_freq_fft[i] = freq_max
 					ax[1,0].set_xlim([0,1000])
 					ax[1,0].set_title('Zoom peak loc + wid')
 					#Plot movement amplitude
@@ -315,17 +238,6 @@ for nf in range(len(emg_data_dict)):
 						x_vals = np.arange(gape_starts[gpi],gape_ends[gpi]) - pre_taste
 						ax[2,1].fill_between(x_vals,min_env*np.ones(len(x_vals)),max_env*np.ones(len(x_vals)),color='r',alpha=0.2)
 					ax[2,1].set_title('Enveloped EMG Gape Times')
-	# 				#Plot first and second derivatives of env
-	# 				ax[3,0].plot(np.arange(-pre_taste+1,post_taste),env_deriv)
-	# 				ax[3,0].scatter(peak_left,np.zeros(len(peak_left)),alpha=0.2,color='g')
-	# 				ax[3,0].scatter(peak_right,np.zeros(len(peak_right)),alpha=0.2,color='r')
-	# 				ax[3,0].set_xlim([0,2000])
-	# 				ax[3,0].set_title('First Derivative of Envelope')
-	# 				ax[3,1].plot(np.arange(-pre_taste+2,post_taste),env_deriv2)
-	# 				ax[3,1].scatter(peak_left,np.zeros(len(peak_left)),alpha=0.2,color='g')
-	# 				ax[3,1].scatter(peak_right,np.zeros(len(peak_right)),alpha=0.2,color='r')
-	# 				ax[3,1].set_xlim([0,2000])
-	# 				ax[3,1].set_title('Second Derivative of Envelope')
 					#Plot fast fourier transform frequencies
 					gape_peak_inds_fft = np.where((peak_amp>=mu_env+3*sig_env)*(min_gape_band<=peak_freq_fft)*(peak_freq_fft<=max_gape_band))[0]
 					gape_times_fft = peak_inds[gape_peak_inds_fft]
@@ -378,4 +290,156 @@ for nf in range(len(emg_data_dict)):
 #Save updated dictionary
 f = open(dict_save_dir,"wb")
 pickle.dump(emg_data_dict,f)	
+	
+#%% Cluster and plot all the fft gapes			
+				
+norm_width = 500 #normalized width of gapes for clustering
+
+for nf in range(len(emg_data_dict)):
+	dataset_name =  emg_data_dict[nf]['given_name']
+	emg_filt = emg_data_dict[nf]['emg_filt']
+	env = emg_data_dict[nf]['env']
+	[num_tastes, max_num_trials, num_time] = np.shape(emg_filt)
+	taste_names = emg_data_dict[nf]['taste_names']
+	all_taste_gapes = emg_data_dict[nf]['taste_gapes']
+	#_____Collect gape waveform information_____
+	#Store waveform tastes
+	gape_tastes = []
+	#Store waveform start times
+	gape_start_times = [] #in ms from taste delivery
+	#Store original emg waveforms
+	norm_width_gape_storage = [] #store width-normalized indiv gape waveforms
+	norm_full_gape_storage = [] #store fully-normalized indiv gape waveforms
+	#Store enveloped waveforms
+	norm_width_env_gape_storage = [] #store width-normalized indiv gape waveforms
+	norm_full_env_gape_storage = [] #store fully-normalized indiv gape waveforms
+	for t_i in range(num_tastes):
+		taste_gapes = all_taste_gapes[t_i]
+		for tr_i in range(max_num_trials):
+			trial_gapes_bin = taste_gapes[tr_i,:]
+			trial_gapes_diff = np.diff(trial_gapes_bin)
+			gape_starts = np.where(trial_gapes_diff == 1)[0] + 1
+			gape_ends = np.where(trial_gapes_diff == -1)[0] + 1
+			for gs in gape_starts:
+				try:
+					ge = gape_ends[np.where((gape_ends-gs > 0))[0][0]]
+				except:
+					pass
+				gape_tastes.extend([t_i])
+				gape_start_times.extend([gs-pre_taste]) #store in ms from taste delivery
+				#Get original waveforms
+				gape_emg = list(emg_filt[t_i,tr_i,gs:ge])
+				x_gape = np.arange(len(gape_emg))
+				gape_env = list(env[t_i,tr_i,gs:ge])
+				#Normalize length waveforms
+				bin_centers = np.linspace(0,len(gape_emg),norm_width)
+				fit_gape_emg_norm_len = interpolate.CubicSpline(x_gape,gape_emg)
+				gape_emg_norm_len = fit_gape_emg_norm_len(bin_centers)
+				norm_width_gape_storage.append(gape_emg_norm_len)
+				fit_gape_env_norm_len = interpolate.CubicSpline(x_gape,gape_env)
+				gape_env_norm_len = fit_gape_env_norm_len(bin_centers)
+				norm_width_env_gape_storage.append(gape_env_norm_len)
+				#Normalize height and length waveforms
+				gape_emg_full_norm = gape_emg_norm_len/np.max(gape_emg_norm_len)
+				norm_full_gape_storage.append(gape_emg_full_norm)
+				gape_env_full_norm = gape_env_norm_len/np.max(gape_env_norm_len)
+				norm_full_env_gape_storage.append(gape_env_full_norm)
+	
+	clust_save_dir = os.path.join(results_dir,'Clustering')
+	if not os.path.isdir(clust_save_dir):
+		os.mkdir(clust_save_dir)
+	for nc in np.arange(2,11): #Test different cluster counts
+		#_____Cluster gape waveform information_____
+		#Normalized width clustering
+		#	EMG
+		emg_norm_width_n_clusters,emg_norm_width_clust_centers,emg_norm_width_labels,emg_norm_width_2D,emg_norm_width_clust_centers_2D \
+			= cluster_waveforms(np.array(norm_width_gape_storage),nc)
+		#	Envelope
+		env_norm_width_n_clusters,env_norm_width_clust_centers,env_norm_width_labels,env_norm_width_2D,env_norm_width_clust_centers_2D \
+			= cluster_waveforms(np.array(norm_width_env_gape_storage),nc)
+		#Normalized width/height clustering
+		#	EMG
+		emg_norm_full_n_clusters,emg_norm_full_clust_centers,emg_norm_full_labels,emg_norm_full_2D,emg_norm_full_clust_centers_2D \
+			 = cluster_waveforms(np.array(norm_full_gape_storage),nc)
+		#	Envelope
+		env_norm_full_n_clusters,env_norm_full_clust_centers,env_norm_full_labels,env_norm_full_2D,env_norm_full_clust_centers_2D \
+			= cluster_waveforms(np.array(norm_full_env_gape_storage),nc)
+		#_____Cluster plot grouping_____
+		gape_tastes_labels = [taste_names[gp] for gp in gape_tastes]
+		gape_start_times_min = np.min(gape_start_times)
+		gape_start_times_max = np.max(gape_start_times)
+		gape_start_times_group_options = np.arange(np.floor(gape_start_times_min/100).astype('int')*100,np.ceil(gape_start_times_max/100).astype('int')*100,100) #Step from min to max in 100 ms bins
+		gape_start_times_group_labels = gape_start_times_group_options/100
+		gape_start_times_group = np.array([np.argmin(np.abs(gst-gape_start_times_group_options)) for gst in gape_start_times])
+		gape_start_times_labels = [gape_start_times_group_labels[gstg] for gstg in gape_start_times_group]
+			
+		clust_plot_save_dir = os.path.join(clust_save_dir,str(nc))
+		if not os.path.isdir(clust_plot_save_dir):
+			os.mkdir(clust_plot_save_dir)
+		#Normalized width
+		#	EMG
+		emg_wid_save_dir = os.path.join(clust_plot_save_dir,'EMG_norm_width')
+		if not os.path.isdir(emg_wid_save_dir):
+			os.mkdir(emg_wid_save_dir)
+		save_name = 'gape_tastes'
+		plot_cluster_results(emg_wid_save_dir,save_name,emg_norm_width_n_clusters,\
+						  emg_norm_width_clust_centers,emg_norm_width_labels,\
+							  emg_norm_width_2D,emg_norm_width_clust_centers_2D,\
+								  gape_tastes,gape_tastes_labels)
+		
+		save_name = 'gape_start_times'
+		plot_cluster_results(emg_wid_save_dir,save_name,emg_norm_width_n_clusters,\
+						  emg_norm_width_clust_centers,emg_norm_width_labels,\
+							  emg_norm_width_2D,emg_norm_width_clust_centers_2D,\
+								  gape_start_times_group,gape_start_times_labels)
+		
+		#	Envelope
+		env_wid_save_dir = os.path.join(clust_plot_save_dir,'Envelope_norm_width')
+		if not os.path.isdir(env_wid_save_dir):
+			os.mkdir(env_wid_save_dir)
+		save_name = 'gape_tastes'
+		plot_cluster_results(env_wid_save_dir,save_name,env_norm_width_n_clusters,\
+						  env_norm_width_clust_centers,env_norm_width_labels,\
+							  env_norm_width_2D,env_norm_width_clust_centers_2D,\
+								  gape_tastes,gape_tastes_labels)
+		
+		save_name = 'gape_start_times'
+		plot_cluster_results(env_wid_save_dir,save_name,env_norm_width_n_clusters,\
+						  env_norm_width_clust_centers,env_norm_width_labels,\
+							  env_norm_width_2D,env_norm_width_clust_centers_2D,\
+								  gape_start_times_group,gape_start_times_labels)
+		
+		#Normalized width/height
+		#	EMG
+		emg_wid_height_save_dir = os.path.join(clust_plot_save_dir,'EMG_norm_full')
+		if not os.path.isdir(emg_wid_height_save_dir):
+			os.mkdir(emg_wid_height_save_dir)
+		save_name = 'gape_tastes'
+		plot_cluster_results(emg_wid_height_save_dir,save_name,emg_norm_full_n_clusters,\
+						  emg_norm_full_clust_centers,emg_norm_full_labels,\
+							  emg_norm_full_2D,emg_norm_full_clust_centers_2D,\
+								  gape_tastes,gape_tastes_labels)
+		
+		save_name = 'gape_start_times'
+		plot_cluster_results(emg_wid_height_save_dir,save_name,emg_norm_full_n_clusters,\
+						  emg_norm_full_clust_centers,emg_norm_full_labels,\
+							  emg_norm_full_2D,emg_norm_full_clust_centers_2D,\
+								  gape_start_times_group,gape_start_times_labels)
+		
+		#	Envelope
+		emg_wid_height_save_dir = os.path.join(clust_plot_save_dir,'Envelope_norm_full')
+		if not os.path.isdir(emg_wid_height_save_dir):
+			os.mkdir(emg_wid_height_save_dir)
+		save_name = 'gape_tastes'
+		plot_cluster_results(emg_wid_height_save_dir,save_name,env_norm_full_n_clusters,\
+						  env_norm_full_clust_centers,env_norm_full_labels,\
+							  env_norm_full_2D,env_norm_full_clust_centers_2D,\
+								  gape_tastes,gape_tastes_labels)
+		
+		save_name = 'gape_start_times'
+		plot_cluster_results(emg_wid_height_save_dir,save_name,env_norm_full_n_clusters,\
+						  env_norm_full_clust_centers,env_norm_full_labels,\
+							  env_norm_full_2D,env_norm_full_clust_centers_2D,\
+								  gape_start_times_group,gape_start_times_labels)
+			
 	
