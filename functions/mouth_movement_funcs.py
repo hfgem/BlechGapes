@@ -67,14 +67,15 @@ def cluster_waveforms(X,nc):
 	
 	return n_clusters,cluster_centers,labels,X_redim,center_redim
 
-def plot_cluster_results(save_dir,save_name,n_clusters,cluster_centers,labels,X_redim,center_redim,groups,group_labels=[]):
+def plot_cluster_results(save_dir,save_name,n_clusters,cluster_centers,labels,\
+                         X_redim,center_redim,groups,group_labels=[]):
 	cluster_colors = cm.viridis(np.linspace(0,1,n_clusters))
 	cluster_wav_colors = np.array([cluster_colors[nc,:] for nc in labels])
 	
 	unique_groups = np.unique(groups)
 	unique_group_labels = [group_labels[np.where(groups==ug)[0][0]] for ug in np.unique(groups)]
 	group_colors = cm.jet(np.linspace(0,1,len(unique_groups)))
-	group_scatter_colors = np.array([group_colors[np.where(unique_groups==g)[0],:] for g in groups])
+	group_scatter_colors = np.array([group_colors[np.where(unique_groups==g)[0],:] for g in groups]).squeeze(1)
 	
 	f,ax = plt.subplots(nrows=3,ncols=2,figsize=(8,8))
 	gs = ax[1, 0].get_gridspec()

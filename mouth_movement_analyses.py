@@ -119,6 +119,7 @@ pickle.dump(emg_data_dict,f)
 
 pre_taste = 2000
 post_taste = 5000
+plot_post_taste = 2000
 min_inter_peak_dist = 50 #min ms apart peaks have to be to count
 min_gape_band = 4
 max_gape_band = 6
@@ -277,11 +278,15 @@ for nf in range(len(emg_data_dict)):
 		emg_data_dict[nf]['taste_gapes'] = all_taste_gapes
 		
 		#Plot all taste gapes as image
+		xticks = np.arange(0,pre_taste+post_taste,1000)
 		f, ax = plt.subplots(nrows=1,ncols=num_tastes,figsize=(3*num_tastes,3))
 		for t_i in range(num_tastes):
 			ax[t_i].imshow(all_taste_gapes[t_i],aspect='auto')
 			ax[t_i].axvline(pre_taste,color='w',linestyle='dashed')
+			ax[t_i].set_xticks(np.array(xticks))
+			ax[t_i].set_xticklabels(list(np.round(xticks-pre_taste,2).astype('str')),rotation=45)
 			ax[t_i].set_title(taste_names[t_i])
+			ax[t_i].set_xlim([0,pre_taste+plot_post_taste])
 		f.tight_layout()
 		f.savefig(os.path.join(results_dir,'emg_gapes_fft.png'))
 		f.savefig(os.path.join(results_dir,'emg_gapes_fft.svg'))
@@ -294,6 +299,7 @@ pickle.dump(emg_data_dict,f)
 #%% Cluster and plot all the fft gapes			
 				
 norm_width = 500 #normalized width of gapes for clustering
+gape_time_cutoff = 2000 #Number of ms after taste delivery to analyze gapes up to
 
 for nf in range(len(emg_data_dict)):
 	dataset_name =  emg_data_dict[nf]['given_name']
@@ -325,25 +331,26 @@ for nf in range(len(emg_data_dict)):
 					ge = gape_ends[np.where((gape_ends-gs > 0))[0][0]]
 				except:
 					pass
-				gape_tastes.extend([t_i])
-				gape_start_times.extend([gs-pre_taste]) #store in ms from taste delivery
-				#Get original waveforms
-				gape_emg = list(emg_filt[t_i,tr_i,gs:ge])
-				x_gape = np.arange(len(gape_emg))
-				gape_env = list(env[t_i,tr_i,gs:ge])
-				#Normalize length waveforms
-				bin_centers = np.linspace(0,len(gape_emg),norm_width)
-				fit_gape_emg_norm_len = interpolate.CubicSpline(x_gape,gape_emg)
-				gape_emg_norm_len = fit_gape_emg_norm_len(bin_centers)
-				norm_width_gape_storage.append(gape_emg_norm_len)
-				fit_gape_env_norm_len = interpolate.CubicSpline(x_gape,gape_env)
-				gape_env_norm_len = fit_gape_env_norm_len(bin_centers)
-				norm_width_env_gape_storage.append(gape_env_norm_len)
-				#Normalize height and length waveforms
-				gape_emg_full_norm = gape_emg_norm_len/np.max(gape_emg_norm_len)
-				norm_full_gape_storage.append(gape_emg_full_norm)
-				gape_env_full_norm = gape_env_norm_len/np.max(gape_env_norm_len)
-				norm_full_env_gape_storage.append(gape_env_full_norm)
+				if gs-pre_taste <= gape_time_cutoff:
+					gape_tastes.extend([t_i])            
+					gape_start_times.extend([gs-pre_taste]) #store in ms from taste delivery
+    				#Get original waveforms
+					gape_emg = list(emg_filt[t_i,tr_i,gs:ge])
+					x_gape = np.arange(len(gape_emg))
+					gape_env = list(env[t_i,tr_i,gs:ge])
+    				#Normalize length waveforms
+					bin_centers = np.linspace(0,len(gape_emg),norm_width)
+					fit_gape_emg_norm_len = interpolate.CubicSpline(x_gape,gape_emg)
+					gape_emg_norm_len = fit_gape_emg_norm_len(bin_centers)
+					norm_width_gape_storage.append(gape_emg_norm_len)
+					fit_gape_env_norm_len = interpolate.CubicSpline(x_gape,gape_env)
+					gape_env_norm_len = fit_gape_env_norm_len(bin_centers)
+					norm_width_env_gape_storage.append(gape_env_norm_len)
+    				#Normalize height and length waveforms
+					gape_emg_full_norm = gape_emg_norm_len/np.max(gape_emg_norm_len)
+					norm_full_gape_storage.append(gape_emg_full_norm)
+					gape_env_full_norm = gape_env_norm_len/np.max(gape_env_norm_len)
+					norm_full_env_gape_storage.append(gape_env_full_norm)
 	
 	clust_save_dir = os.path.join(results_dir,'Clustering')
 	if not os.path.isdir(clust_save_dir):
@@ -378,21 +385,21 @@ for nf in range(len(emg_data_dict)):
 			os.mkdir(clust_plot_save_dir)
 		#Normalized width
 		#	EMG
-		emg_wid_save_dir = os.path.join(clust_plot_save_dir,'EMG_norm_width')
-		if not os.path.isdir(emg_wid_save_dir):
-			os.mkdir(emg_wid_save_dir)
-		save_name = 'gape_tastes'
-		plot_cluster_results(emg_wid_save_dir,save_name,emg_norm_width_n_clusters,\
-						  emg_norm_width_clust_centers,emg_norm_width_labels,\
-							  emg_norm_width_2D,emg_norm_width_clust_centers_2D,\
-								  gape_tastes,gape_tastes_labels)
-		
-		save_name = 'gape_start_times'
-		plot_cluster_results(emg_wid_save_dir,save_name,emg_norm_width_n_clusters,\
-						  emg_norm_width_clust_centers,emg_norm_width_labels,\
-							  emg_norm_width_2D,emg_norm_width_clust_centers_2D,\
-								  gape_start_times_group,gape_start_times_labels)
-		
+# 		emg_wid_save_dir = os.path.join(clust_plot_save_dir,'EMG_norm_width')
+# 		if not os.path.isdir(emg_wid_save_dir):
+# 			os.mkdir(emg_wid_save_dir)
+# 		save_name = 'gape_tastes'
+# 		plot_cluster_results(emg_wid_save_dir,save_name,emg_norm_width_n_clusters,\
+# 						  emg_norm_width_clust_centers,emg_norm_width_labels,\
+# 							  emg_norm_width_2D,emg_norm_width_clust_centers_2D,\
+# 								  gape_tastes,gape_tastes_labels)
+# 		
+# 		save_name = 'gape_start_times'
+# 		plot_cluster_results(emg_wid_save_dir,save_name,emg_norm_width_n_clusters,\
+# 						  emg_norm_width_clust_centers,emg_norm_width_labels,\
+# 							  emg_norm_width_2D,emg_norm_width_clust_centers_2D,\
+# 								  gape_start_times_group,gape_start_times_labels)
+# 		
 		#	Envelope
 		env_wid_save_dir = os.path.join(clust_plot_save_dir,'Envelope_norm_width')
 		if not os.path.isdir(env_wid_save_dir):
@@ -411,21 +418,21 @@ for nf in range(len(emg_data_dict)):
 		
 		#Normalized width/height
 		#	EMG
-		emg_wid_height_save_dir = os.path.join(clust_plot_save_dir,'EMG_norm_full')
-		if not os.path.isdir(emg_wid_height_save_dir):
-			os.mkdir(emg_wid_height_save_dir)
-		save_name = 'gape_tastes'
-		plot_cluster_results(emg_wid_height_save_dir,save_name,emg_norm_full_n_clusters,\
-						  emg_norm_full_clust_centers,emg_norm_full_labels,\
-							  emg_norm_full_2D,emg_norm_full_clust_centers_2D,\
-								  gape_tastes,gape_tastes_labels)
-		
-		save_name = 'gape_start_times'
-		plot_cluster_results(emg_wid_height_save_dir,save_name,emg_norm_full_n_clusters,\
-						  emg_norm_full_clust_centers,emg_norm_full_labels,\
-							  emg_norm_full_2D,emg_norm_full_clust_centers_2D,\
-								  gape_start_times_group,gape_start_times_labels)
-		
+# 		emg_wid_height_save_dir = os.path.join(clust_plot_save_dir,'EMG_norm_full')
+# 		if not os.path.isdir(emg_wid_height_save_dir):
+# 			os.mkdir(emg_wid_height_save_dir)
+# 		save_name = 'gape_tastes'
+# 		plot_cluster_results(emg_wid_height_save_dir,save_name,emg_norm_full_n_clusters,\
+# 						  emg_norm_full_clust_centers,emg_norm_full_labels,\
+# 							  emg_norm_full_2D,emg_norm_full_clust_centers_2D,\
+# 								  gape_tastes,gape_tastes_labels)
+# 		
+# 		save_name = 'gape_start_times'
+# 		plot_cluster_results(emg_wid_height_save_dir,save_name,emg_norm_full_n_clusters,\
+# 						  emg_norm_full_clust_centers,emg_norm_full_labels,\
+# 							  emg_norm_full_2D,emg_norm_full_clust_centers_2D,\
+# 								  gape_start_times_group,gape_start_times_labels)
+# 		
 		#	Envelope
 		emg_wid_height_save_dir = os.path.join(clust_plot_save_dir,'Envelope_norm_full')
 		if not os.path.isdir(emg_wid_height_save_dir):
