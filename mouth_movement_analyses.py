@@ -151,6 +151,17 @@ for nf in range(len(emg_data_dict)):
 			if not os.path.isdir(taste_save_dir):
 				os.mkdir(taste_save_dir)
 			taste_gapes = np.zeros((max_num_trials,pre_taste+post_taste))
+			#Get pre-delivery mean and standard deviation for gape threshold
+			mu_env_all = np.zeros(max_num_trials)
+			sig_env_all = np.zeros(max_num_trials)
+			for tr_i in range(max_num_trials):
+				if not np.isnan(emg_filt[t_i,tr_i,0]): #Make sure a delivery actually happened - nan otherwise
+					tr_env = env[t_i,tr_i,:].flatten()
+					mu_env_all[tr_i] = np.nanmean(tr_env[:pre_taste])
+					sig_env_all[tr_i] = np.nanstd(tr_env[:pre_taste])
+			#Calculate pre-taste enveloped signal mean and standard deviation
+			mu_env = np.nanmean(mu_env_all)
+			sig_env = np.nanmean(sig_env_all)
 			for tr_i in tqdm.tqdm(range(max_num_trials)):
 				if not np.isnan(emg_filt[t_i,tr_i,0]): #Make sure a delivery actually happened - nan otherwise
 					f, ax = plt.subplots(nrows=5,ncols=2,figsize=(10,10))
@@ -167,9 +178,6 @@ for nf in range(len(emg_data_dict)):
 					ax[0,1].plot(np.arange(-pre_taste,post_taste),tr_env)
 					ax[0,1].axvline(0,color='k',linestyle='dashed')
 					ax[0,1].set_title('Enveloped EMG')
-					#Calculate pre-taste enveloped signal mean and standard deviation
-					mu_env = np.nanmean(tr_env[:pre_taste])
-					sig_env = np.nanstd(tr_env[:pre_taste])
 					#Find peaks above 1 std. and with a preset minimum dist between
 					[peak_inds, peak_props] = find_peaks(tr_env-mu_env,prominence=sig_env,distance=min_inter_peak_dist,width=0,rel_height=0.99)
 					#___Find edges of peaks using peak widths function
@@ -392,4 +400,6 @@ for nf in range(len(emg_data_dict)):
 	
 	#Calculate cluster statistics
 	cluster_stats(nf,emg_data_dict,clust_save_dir,dict_save_dir)
+	
+	
 		

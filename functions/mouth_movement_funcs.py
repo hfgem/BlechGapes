@@ -80,7 +80,11 @@ def umap_cluster_waveforms(X):
 #  	n_clusters = len(labels_unique)
 # =============================================================================
 
-	reducer = umap.UMAP()
+	try:
+		reducer = umap.UMAP()
+	except:
+		import umap.umap_ as umap
+		reducer = umap.UMAP()
 	embedding = reducer.fit_transform(X)
 	
 	#Cluster embeddings using meanshift
@@ -236,6 +240,7 @@ def cluster_stats(nf,emg_data_dict,clust_save_dir,dict_save_dir):
 	#____Plot Settings____
 	cluster_colors_norm_width = cm.viridis(np.linspace(0,1,nc_width))
 	cluster_colors_norm_full = cm.viridis(np.linspace(0,1,nc_full))
+	taste_colors = cm.turbo(np.linspace(0,1,len(taste_names)))
 	
 	#____Normalized Width Analyses____
 	env_wid_save_dir = os.path.join(clust_save_dir,'Envelope_norm_width')
@@ -251,7 +256,7 @@ def cluster_stats(nf,emg_data_dict,clust_save_dir,dict_save_dir):
 		clust_taste_labels = [taste_names[cti] for cti in clust_tastes]
 		
 		#Calculate stats
-		clust_taste_ratios = np.array([len(np.where(clust_tastes==t_i)[0]) for t_i in range(len(taste_names))])/num_gapes
+		clust_taste_ratios = np.array([len(np.where(clust_tastes==t_i)[0])/len(clust_tastes) for t_i in range(len(taste_names))])
 		mean_clust_start_time = np.mean(clust_start_times)
 		std_clust_start_time = np.std(clust_start_times)
 		
@@ -265,7 +270,7 @@ def cluster_stats(nf,emg_data_dict,clust_save_dir,dict_save_dir):
 		
 		#___Plot results___
 		clust_plot_name = 'norm_width_cluster_' + str(nc_i) + '_stats'
-		f,ax = plt.subplots(nrows=3,ncols=1,figsize=(3,9))
+		f,ax = plt.subplots(nrows=4,ncols=1,figsize=(3,12))
 		#Plot cluster waveforms overlaid
 		ax[0].plot(clust_gapes.T,alpha=0.2,color='b')
 		ax[0].set_title('Waveforms Overlaid')
@@ -280,6 +285,12 @@ def cluster_stats(nf,emg_data_dict,clust_save_dir,dict_save_dir):
 		ax[2].set_xlabel('ms from taste delivery')
 		ax[2].set_title('Movement Onset Time')
 		ax[2].legend()
+		#Plot histogram of onset times by taste
+		for t_i in range(len(taste_names)):
+			ax[3].hist(np.array(clust_start_times)[clust_tastes == t_i],alpha=0.33,color=taste_colors[t_i,:],label=taste_names[t_i])
+		ax[3].legend()
+		ax[3].set_xlabel('ms from taste delivery')
+		ax[3].set_title('Movement Onset Time')
 		#Figure tweaks
 		plt.suptitle('Normalized Width Cluster ' + str(nc_i))
 		plt.tight_layout()
@@ -344,7 +355,7 @@ def cluster_stats(nf,emg_data_dict,clust_save_dir,dict_save_dir):
 		
 		#___Plot results___
 		clust_plot_name = 'norm_full_cluster_' + str(nc_i) + '_stats'
-		f,ax = plt.subplots(nrows=3,ncols=1,figsize=(3,9))
+		f,ax = plt.subplots(nrows=4,ncols=1,figsize=(3,12))
 		#Plot cluster waveforms overlaid
 		ax[0].plot(clust_gapes.T,alpha=0.2,color='b')
 		ax[0].set_title('Waveforms Overlaid')
@@ -358,6 +369,12 @@ def cluster_stats(nf,emg_data_dict,clust_save_dir,dict_save_dir):
 		ax[2].axvline(mean_clust_start_time-std_clust_start_time,linestyle='dashed',color='blue',label='_')
 		ax[2].set_xlabel('ms from taste delivery')
 		ax[2].set_title('Movement Onset Time')
+		#Plot histogram of onset times by taste
+		for t_i in range(len(taste_names)):
+			ax[3].hist(np.array(clust_start_times)[clust_tastes == t_i],alpha=0.33,color=taste_colors[t_i,:],label=taste_names[t_i])
+		ax[3].legend()
+		ax[3].set_xlabel('ms from taste delivery')
+		ax[3].set_title('Movement Onset Time')
 		#Figure tweaks
 		plt.suptitle('Normalized Full Cluster ' + str(nc_i))
 		plt.tight_layout()
