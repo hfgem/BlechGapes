@@ -22,6 +22,7 @@ from scipy.fft import fft, fftfreq
 from functions.mouth_movement_funcs import *
 
 #%% Load all files to be analyzed
+#TODO: Add option to load a prior emg_data_dict.pkl for continued analysis
 
 #Prompt user for the number of datasets needed in the analysis
 num_files = int_input("How many data files do you need to import for this analysis (integer value)? ")
@@ -275,6 +276,8 @@ for nf in range(len(emg_data_dict)):
 					plt.close(f)
 			all_taste_gapes.append(taste_gapes)	
 		emg_data_dict[nf]['taste_gapes'] = all_taste_gapes
+		#Also export to numpy file for import in gape analysis
+		np.save(os.path.join(taste_save_dir,'emg_clust_results.npy'),np.array(all_taste_gapes))
 		
 		#Plot all taste gapes as image
 		f, ax = plt.subplots(nrows=1,ncols=num_tastes,figsize=(3*num_tastes,3))

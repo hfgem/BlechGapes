@@ -44,13 +44,17 @@ def int_input(prompt):
 	
 	return int_val
 
+
 def bw_plot(dataset,xlabels,all_pairs,sig_vals,ylabel,anim_name,title,savename,save_dir):
 	#This function plots the results as box-and-whisker plots
 	f_box = plt.figure(figsize=(8,8))
 	for d_i in range(len(dataset)):
 		dataset_i = np.array(dataset[d_i])
 		no_nan_data = dataset_i[~np.isnan(dataset_i)]
-		plt.boxplot([list(no_nan_data)],positions=[d_i+1],sym='',showmeans=True,meanline=True)
+		plt.boxplot([list(no_nan_data)],positions=[d_i+1],sym='',showmeans=False,meanline=False,medianprops=dict(linestyle='None',linewidth=0))
+		plt.plot([d_i+1-0.1,d_i+1+0.1],[np.nanmean(no_nan_data),np.nanmean(no_nan_data)],label=xlabels[d_i]+' mean')
+		plt.scatter(np.random.normal(d_i+1,0.04,size=len(no_nan_data)),no_nan_data,color='g',alpha=0.2,label='Individual Trials')
+	plt.legend()
 	xtick_vals = plt.xticks()[0]
 	plt.xticks(ticks=xtick_vals,labels=xlabels)
 	ytick_vals = plt.yticks()[0]
@@ -102,8 +106,8 @@ def scatt_line_plot(dataset,xlabels,all_pairs,ylabel,anim_name,title,savename,sa
 	cm_subsection = np.linspace(0,1,num_datapoints)
 	cmap = [cm.gist_rainbow(x) for x in cm_subsection]
 	x_vals = np.arange(num_datapoints)
-	mean_vals = [np.mean(dataset[i]) for i in range(num_datapoints)]
-	std_vals = [np.std(dataset[i]) for i in range(num_datapoints)]
+	mean_vals = [np.nanmean(dataset[i]) for i in range(num_datapoints)]
+	std_vals = [np.nanstd(dataset[i]) for i in range(num_datapoints)]
 	f_box = plt.figure(figsize=(8,8))
 	for i in range(num_datapoints):
 		x_i = x_vals[i]
@@ -131,6 +135,18 @@ if num_anim >= 1:
 	print("Multiple file import selected.")
 else:
 	print("Single file import selected.")
+    
+#Prompt user which data type is being analyzed: BSA gapes or cluster gapes
+#BSA = 1, Cluster = 2
+data_type = int_input("Which gape dataset do you wish to analyze: BSA = 1, Cluster = 2 (enter integer value)? ")
+if data_type == 1:
+	type_name = 'bsa_gape_onset'
+elif data_type == 2:
+	type_name = 'cluster_gape_onset'
+	print("Please select the folder where the clustering gape data is stored. (Likely BlechGapes_analysis)")
+	clust_gape_dir = easygui.diropenbox(title='Please select the folder where data is stored.')
+else:
+	raise Exception
 
 #Pull all data into a dictionary
 data_dict = dict()
@@ -150,11 +166,14 @@ for na in range(num_anim):
 	metadata_handler = imp_metadata([[], animal_dir])
 	dir_name1 = metadata_handler.dir_name
 	os.chdir(dir_name1)
-	# Open the hdf5 file
-	hf5 = tables.open_file(metadata_handler.hdf5_name, 'r+')
-	#extract data from HDf5 and get rid of dimensions with one value
-	all_gapes = np.squeeze(hf5.root.emg_BSA_results.gapes[:])
-	hf5.close()
+	if data_type == 1:
+		# Open the hdf5 file
+		hf5 = tables.open_file(metadata_handler.hdf5_name, 'r+')
+		#extract data from HDf5 and get rid of dimensions with one value
+		all_gapes = np.squeeze(hf5.root.emg_BSA_results.gapes[:])
+		hf5.close()
+	else: #Import cluster data
+		all_gapes = np.load(os.path.join(clust_gape_dir,'emg_clust_results.npy'))
 	animal_gape_data = []
 	num_tastes = np.shape(all_gapes)[0]
 	animal_taste_names = []
@@ -176,6 +195,9 @@ for na in range(num_anim):
 #Analysis Storage Directory
 print('Please select a directory to save all results from this set of analyses.')
 results_dir = easygui.diropenbox(title='Please select the storage folder.')
+results_dir = os.path.join(results_dir,type_name)
+if not os.path.isdir(results_dir):
+    os.mkdir(results_dir)
 
 #Save dictionary
 dict_save_dir = os.path.join(results_dir,'gape_onset_dict.pkl')
@@ -207,8 +229,10 @@ gape_data_lengths = np.array(gape_data_lengths)
 print("To analyze gape data, please select the gape limits.")
 gape_start_min = int_input("\tHow long after taste delivery (ms) do you want gape detection to begin? ")
 gape_start_max = int_input("\tHow long after taste delivery (ms) do you want gape detection to end? ")
-gape_end = int_input("\tWhat is the min length of a gape to consider (must be less than " + str(min(gape_data_lengths)) + ")? ")
-
+if data_type == 1:
+    gape_end = int_input("\tWhat is the min length of a gape to consider (must be less than " + str(min(gape_data_lengths)) + ")? ")
+else:
+    gape_end = 0
 #Pull out gape times
 for na in range(num_anim):
 	anim_bool_gape_data = data_dict[na]['bool_gape_data'] #num tastes x [num_trials,num_time]
