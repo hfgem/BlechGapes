@@ -18,10 +18,9 @@ from scipy.stats import mannwhitneyu, f_oneway
 from itertools import combinations
 # Necessary blech_clust modules
 #sys.path.append('/home/cmazzio/Desktop/blech_clust/')
-sys.path.append('Users/hannahgermaine/Documents/GitHub/blech_clust/')
-from utils.blech_utils import (
-		imp_metadata,
-		)
+#sys.path.append('Users/hannahgermaine/Documents/GitHub/blech_clust/')
+sys.path.append('/home/cmazzio/Desktop/blech_clust/utils')
+from blech_utils import imp_metadata
 
 """Changes to make:
 	- Ask for user to select folder with data rather than manual write-in
@@ -48,7 +47,10 @@ def int_input(prompt):
 def bw_plot(dataset,xlabels,all_pairs,sig_vals,ylabel,anim_name,title,savename,save_dir):
 	#This function plots the results as box-and-whisker plots
 	f_box = plt.figure(figsize=(8,8))
-	plt.boxplot(dataset,showmeans=True,meanline=True)
+	for d_i in range(len(dataset)):
+		dataset_i = np.array(dataset[d_i])
+		no_nan_data = dataset_i[~np.isnan(dataset_i)]
+		plt.boxplot([list(no_nan_data)],positions=[d_i+1],sym='',showmeans=True,meanline=True)
 	xtick_vals = plt.xticks()[0]
 	plt.xticks(ticks=xtick_vals,labels=xlabels)
 	ytick_vals = plt.yticks()[0]
@@ -234,22 +236,6 @@ for na in range(num_anim):
 		anim_gape_times.append(taste_gape_times)
 	data_dict[na]['gape_times'] = anim_gape_times
 		
-#%% Plot Boolean Gape Times
-pre_taste = 2000
-for na in range(num_anim):
-	anim_bool_gape_data = data_dict[na]['bool_gape_data']
-	animal_taste_names = animal_dict['taste_names']
-	num_tastes = len(animal_taste_names)
-	f, ax = plt.subplots(nrows=1,ncols=num_tastes,figsize=(3*num_tastes,3))
-	for t_i in range(num_tastes):
-		ax[t_i].imshow(anim_bool_gape_data[t_i],aspect='auto')
-		ax[t_i].axvline(pre_taste,color='w',linestyle='dashed')
-		ax[t_i].set_title(animal_taste_names[t_i])
-	f.tight_layout()
-	f.savefig(os.path.join(dict_save_dir,'bool_gapes.png'))
-	f.savefig(os.path.join(dict_save_dir,'bool_gapes.svg'))
-	plt.close(f)	
-	
 #%% Analyze First Gapes
 
 #Create a storage folder
@@ -332,6 +318,7 @@ for na in range(num_anim):
 	#Plot scatter/line trends across tastants of first gape lengths
 	scatt_line_plot(anim_first_gape_lengths,anim_taste_names,all_pairs,'First Gape Length (ms)',\
 				 anim_name,'First Gape Length','_first_gape_lengths_scat',first_gapes_dir)
+
 #_____Calculate across-animal/dataset stats_____		
 all_pairs = list(combinations(np.arange(len(first_gapes_data_names)),2))
 sig_pairs_first_gapes = np.zeros(len(all_pairs))

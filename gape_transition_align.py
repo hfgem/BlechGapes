@@ -11,20 +11,14 @@ Created on Wed Sep  6 12:51:31 2023
 ###############################################################################################
 import sys, pickle, easygui, os
 from matplotlib import cm
-from pytau.changepoint_io import FitHandler
 import pylab as plt
-from pytau.utils import plotting
 import numpy as np
 from matplotlib import pyplot as plt
-from pytau.utils.ephys_data import EphysData
 from scipy import stats
-from pytau.changepoint_io import DatabaseHandler
-fit_database = DatabaseHandler()
-fit_database.drop_duplicates()
-fit_database.clear_mismatched_paths()
-# Get fits for a particular experiment
-dframe = fit_database.fit_database
-from pytau.changepoint_analysis import PklHandler
+#Get dataframe for all data
+import pandas as pd
+dframe_path = '/media/cmazzio/large_data/Change_point_models/model_database.csv'
+dframe = pd.read_csv(dframe_path)
 
 #%% Function definition
 
@@ -60,7 +54,7 @@ desired_states = 4 #which number of states dataset to use
 
 #Prompt user for the number of datasets needed in the analysis
 num_files = int_input("How many data files do you need to import for this analysis (integer value)? ")
-if num_files >= 1:
+if num_files > 1:
 	print("Multiple file import selected.")
 else:
 	print("Single file import selected.")
@@ -77,31 +71,35 @@ for nf in range(num_files):
 	state_bool = wanted_frame['model.states'] == desired_states
 	wanted_frame = wanted_frame[state_bool]
 	name_list = wanted_frame['data.basename']
-	taste_list = wanted_frame['data.taste_num']
+	taste_list = list(wanted_frame['data.taste_num'])
+	taste_name_list = list(wanted_frame['exp.exp_name'])
 	print("There are " + str(len(taste_list)) + " tastes available.")
-	taste_bool = int_input("Which taste do you want (index starting from 0)? ")
-	wanted_frame = wanted_frame[taste_bool]
-	taste_list = wanted_frame['data.taste_num']
-	pkl_path_list = wanted_frame['exp.save_path']
-	this_handler = PklHandler(pkl_path_list[0])
+	print("Taste Indices: ")
+	print(taste_list)
+	print("Taste Names: ")
+	print(taste_name_list)
+	taste_bool = int_input("\nWhich taste do you want (given index above)? ")
+	taste_name = str(np.array(taste_name_list)[np.where(np.array(taste_list) == taste_bool)[0]][0])
+	pkl_path = list(wanted_frame['exp.save_path'])[taste_bool]
+	data_name = list(name_list)[taste_bool]
 	#Import changepoints for each delivery
-	scaled_mode_tau = this_handler.tau.scaled_mode_tau #num trials x num cp
+	scaled_mode_tau = np.load(pkl_path+'_scaled_mode_tau.npy') #num trials x num cp
 	#Import spikes following each taste delivery
-	spike_train = this_handler.firing.raw_spikes
+	spike_train = np.load(pkl_path+'_raw_spikes.npy')
 	#Store changepoint and spike data in dictionary
 	tau_data_dict[nf] = dict()
 	tau_data_dict[nf]['data_dir'] = data_dir
 	print("Give a more colloquial name to the dataset.")
-	given_name = input("How would you rename " + name_list + "? ")
+	given_name = input("How would you rename " + data_name + " taste " + taste_name + "? ")
+	tau_data_dict[nf]['true_name'] = data_name
 	tau_data_dict[nf]['given_name'] = given_name
-	tau_data_dict[nf]['taste_list'] = taste_list
 	tau_data_dict[nf]['states'] = desired_states
 	tau_data_dict[nf]['scaled_mode_tau'] = scaled_mode_tau
 	tau_data_dict[nf]['spike_train'] = spike_train
 	#Import associated gapes
 	print("Now import associated first gapes data with this dataset.")
-	gape_data_dir = easygui.diropenbox(title='Please select the folder where data is stored.')
-	#Search for matching file type - ends in _gapes.npy
+	gape_data_dir = os.path.join(data_dir,'gape_onset_plots')
+    #Search for matching file type - ends in _gapes.npy
 	files_in_dir = os.listdir(gape_data_dir)
 	for filename in files_in_dir:
 		if filename[-10:] == '_gapes.npy':
@@ -113,7 +111,7 @@ for nf in range(num_files):
 		first_gapes = tau_data_dict[nf]['first_gapes']
 	except:
 		'First gapes file not found in given folder. Program closing - try again.'
-		quit()
+		raise Exception
 	
 #Analysis Storage Directory
 print('Please select a directory to save all results from this set of analyses.')
@@ -148,7 +146,6 @@ for nf in range(len(tau_data_dict)):
 	given_name = tau_data_dict[nf]['given_name']
 	#load changepoint information
 	scaled_mode_tau = tau_data_dict[nf]['scaled_mode_tau']
-	taste_list = tau_data_dict[nf]['taste_list']
 	tau_data.append(scaled_mode_tau - pre_taste_time)
 	#load first gapes information 
 	first_gapes = tau_data_dict[nf]['first_gapes']
@@ -211,7 +208,7 @@ plt.savefig(tau_onsets,cp_stats_dir + 'cp_onsets.png')
 plt.savefig(tau_onsets,cp_stats_dir + 'cp_onsets.svg')
 		
 
-
+###########BELOW IS ALL OLD HARDCODED CODE###########
 #%%
 
 #first_sac_gapes: trial x time (onset and offset times of first gapes in each trial)
