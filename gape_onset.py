@@ -135,7 +135,7 @@ if num_anim >= 1:
 	print("Multiple file import selected.")
 else:
 	print("Single file import selected.")
-    
+	
 #Prompt user which data type is being analyzed: BSA gapes or cluster gapes
 #BSA = 1, Cluster = 2
 data_type = int_input("Which gape dataset do you wish to analyze: BSA = 1, Cluster = 2 (enter integer value)? ")
@@ -197,14 +197,14 @@ print('Please select a directory to save all results from this set of analyses.'
 results_dir = easygui.diropenbox(title='Please select the storage folder.')
 results_dir = os.path.join(results_dir,type_name)
 if not os.path.isdir(results_dir):
-    os.mkdir(results_dir)
+	os.mkdir(results_dir)
 
 #Save dictionary
 dict_save_dir = os.path.join(results_dir,'gape_onset_dict.pkl')
 f = open(dict_save_dir,"wb")
 pickle.dump(data_dict,f)
 #with open(dict_save_dir, "rb") as pickle_file:
-#    data_dict = pickle.load(pickle_file)
+#	data_dict = pickle.load(pickle_file)
 
 #%% Process Gape Data for Analyses
 pre_time = 2000 #pre-taste time in data (ms) to subtract
@@ -230,9 +230,10 @@ print("To analyze gape data, please select the gape limits.")
 gape_start_min = int_input("\tHow long after taste delivery (ms) do you want gape detection to begin? ")
 gape_start_max = int_input("\tHow long after taste delivery (ms) do you want gape detection to end? ")
 if data_type == 1:
-    gape_end = int_input("\tWhat is the min length of a gape to consider (must be less than " + str(min(gape_data_lengths)) + ")? ")
+	gape_end = int_input("\tWhat is the min length of a gape to consider (must be less than " + str(min(gape_data_lengths)) + ")? ")
 else:
-    gape_end = 0
+	gape_end = 0
+	inter_gape_interval = int_input("\tWhat is the maximum interval (ms) between gapes to consider as part of a bout? ")
 #Pull out gape times
 for na in range(num_anim):
 	anim_bool_gape_data = data_dict[na]['bool_gape_data'] #num tastes x [num_trials,num_time]
@@ -270,6 +271,7 @@ if os.path.isdir(first_gapes_dir) == False:
 #Collect first gape start and end times and plot stats
 first_gapes = []
 first_gape_lengths = []
+first_gape_bout_lengths = []
 first_gapes_data_names = []
 #_____Plot within-animal/dataset stats_____
 for na in range(num_anim):
@@ -280,23 +282,35 @@ for na in range(num_anim):
 	anim_gape_times = data_dict[na]['gape_times']
 	num_tastes = len(anim_taste_names)
 	anim_first_gapes = []
-	anim_first_gape_lengths = []
+	anim_first_gape_lengths = [] #If BSA save the length of the gape interval
+	anim_first_gape_bout_lengths = [] #If clustering save the bout length of consecutive gapes
 	for t_i in range(num_tastes):
 		taste_gape_times = anim_gape_times[t_i]
 		num_trials = len(taste_gape_times)
 		taste_first_gapes = []
 		taste_first_gape_times = []
 		taste_first_lengths = []
+		taste_first_bout_lengths = []
 		for trial in range(num_trials):
 			trial_gape_times = taste_gape_times[trial]
 			if ~np.isnan(trial_gape_times[0][0]):
 				taste_first_gape_times.append(trial_gape_times[0])
 				taste_first_gapes.extend([trial_gape_times[0][0]])
-				taste_first_lengths.extend([trial_gape_times[0][1]-trial_gape_times[0][0]])
+				if data_type == 1: #BSA
+					taste_first_lengths.extend([trial_gape_times[0][1]-trial_gape_times[0][0]])
+				else: #Cluster
+					first_bout_times = [trial_gape_times[0][0],trial_gape_times[0][1]]
+					for g_i in range(len(trial_gape_times)-1):
+						if (trial_gape_times[g_i+1][0] - trial_gape_times[g_i][1]) <= inter_gape_interval:
+							first_bout_times[1] = trial_gape_times[g_i+1][1]
+						else:
+							break #No longer part of the first bout
+					taste_first_bout_lengths.extend([first_bout_times[1]-first_bout_times[0]])
 			else:
 				taste_first_gape_times.append([np.nan,np.nan])
 				taste_first_gapes.extend([np.nan])
 				taste_first_lengths.extend([np.nan])
+				taste_first_bout_lengths.extend([np.nan])
 		#Save first gapes to numpy array
 		taste_first_gape_times = np.array(taste_first_gape_times)
 		gape_onset_dir = os.path.join(anim_dir,'gape_onset_plots')
@@ -307,70 +321,105 @@ for na in range(num_anim):
 		#Add to dictionary
 		anim_first_gapes.append(taste_first_gapes)
 		anim_first_gape_lengths.append(taste_first_lengths)
+		anim_first_gape_bout_lengths.append(taste_first_bout_lengths)
 	first_gapes.extend(anim_first_gapes)
 	first_gapes_data_names.extend(joint_names)
 	first_gape_lengths.extend(anim_first_gape_lengths)
+	first_gape_bout_lengths.extend(anim_first_gape_bout_lengths)
 	#Calculate statistical difference between taste pairs
 	all_pairs = list(combinations(np.arange(num_tastes),2))
 	sig_pairs_first_gapes = np.zeros(len(all_pairs))
 	sig_pairs_first_gape_lengths = np.zeros(len(all_pairs))
+	sig_pairs_first_gape_bout_lengths = np.zeros(len(all_pairs))
 	for ap_i in range(len(all_pairs)):
 		ap = all_pairs[ap_i]
 		stat_first, p_first = mannwhitneyu(anim_first_gapes[ap[0]], anim_first_gapes[ap[1]])
 		if p_first <= 0.05:
 			sig_pairs_first_gapes[ap_i] = 1
-		stat_first_len, p_first_len = mannwhitneyu(anim_first_gape_lengths[ap[0]], anim_first_gape_lengths[ap[1]])
-		if p_first_len <= 0.05:
-			sig_pairs_first_gape_lengths[ap_i] = 1
+		if data_type == 1: #BSA
+			stat_first_len, p_first_len = mannwhitneyu(anim_first_gape_lengths[ap[0]], anim_first_gape_lengths[ap[1]])
+			if p_first_len <= 0.05:
+				sig_pairs_first_gape_lengths[ap_i] = 1
+		else: #Cluster
+			stat_first_len, p_first_len = mannwhitneyu(anim_first_gape_bout_lengths[ap[0]], anim_first_gape_bout_lengths[ap[1]])
+			if p_first_len <= 0.05:
+				sig_pairs_first_gape_bout_lengths[ap_i] = 1
 	#Plot box-and-whisker plots of first gapes
 	bw_plot(anim_first_gapes,anim_taste_names,all_pairs,sig_pairs_first_gapes,\
 		 'Time to First Gape (ms)',anim_name,'Time to First Gape',\
 			 '_time_to_first_gape_bw',first_gapes_dir)
-	#Plot box-and-whisker plots of first gape lengths
-	bw_plot(anim_first_gape_lengths,anim_taste_names,all_pairs,sig_pairs_first_gape_lengths,\
-		 'First Gape Length (ms)',anim_name,'First Gape Length',\
-			 '_first_gape_lengths_bw',first_gapes_dir)
-	#Plot cumulative histogram of first gapes
-	hist_plot(anim_first_gapes,anim_taste_names,'Time to First Gape (ms)',\
-			anim_name,'Time to First Gape','_time_to_first_gape_cumhist',first_gapes_dir)
-	#Plot cumulative histogram of first gape lengths
-	hist_plot(anim_first_gape_lengths,anim_taste_names,'First Gape Length (ms)',\
-			anim_name,'First Gape Length','_first_gape_lengths_cumhist',first_gapes_dir)
 	#Plot scatter/line trends across tastants of first gapes
 	scatt_line_plot(anim_first_gapes,anim_taste_names,all_pairs,'Time to First Gape (ms)',\
 				 anim_name,'Time to First Gape','_time_to_first_gape_scat',first_gapes_dir)
-	#Plot scatter/line trends across tastants of first gape lengths
-	scatt_line_plot(anim_first_gape_lengths,anim_taste_names,all_pairs,'First Gape Length (ms)',\
-				 anim_name,'First Gape Length','_first_gape_lengths_scat',first_gapes_dir)
+	#Plot cumulative histogram of first gapes
+	hist_plot(anim_first_gapes,anim_taste_names,'Time to First Gape (ms)',\
+			anim_name,'Time to First Gape','_time_to_first_gape_cumhist',first_gapes_dir)
+	if data_type == 1: #BSA
+		#Plot box-and-whisker plots of first gape lengths
+		bw_plot(anim_first_gape_lengths,anim_taste_names,all_pairs,sig_pairs_first_gape_lengths,\
+			 'First Gape Length (ms)',anim_name,'First Gape Length',\
+				 '_first_gape_lengths_bw',first_gapes_dir)
+		#Plot cumulative histogram of first gape lengths
+		hist_plot(anim_first_gape_lengths,anim_taste_names,'First Gape Length (ms)',\
+				anim_name,'First Gape Length','_first_gape_lengths_cumhist',first_gapes_dir)
+		#Plot scatter/line trends across tastants of first gape lengths
+		scatt_line_plot(anim_first_gape_lengths,anim_taste_names,all_pairs,'First Gape Length (ms)',\
+				anim_name,'First Gape Length','_first_gape_lengths_scat',first_gapes_dir)
+	else: #Clusters
+		#Plot box-and-whisker plots of first gape lengths
+		bw_plot(anim_first_gape_bout_lengths,anim_taste_names,all_pairs,sig_pairs_first_gape_bout_lengths,\
+			 'First Gape Bout Length (ms)',anim_name,'First Gape Bout Length',\
+				 '_first_gape_bout_lengths_bw',first_gapes_dir)
+		#Plot cumulative histogram of first gape lengths
+		hist_plot(anim_first_gape_bout_lengths,anim_taste_names,'First Gape Bout Length (ms)',\
+				anim_name,'First Gape Bout Length','_first_gape_bout_lengths_cumhist',first_gapes_dir)
+		#Plot scatter/line trends across tastants of first gape lengths
+		scatt_line_plot(anim_first_gape_bout_lengths,anim_taste_names,all_pairs,'First Gape Bout Length (ms)',\
+				anim_name,'First Gape Bout Length','_first_gape_bout_lengths_scat',first_gapes_dir)
 
 #_____Calculate across-animal/dataset stats_____		
 all_pairs = list(combinations(np.arange(len(first_gapes_data_names)),2))
 sig_pairs_first_gapes = np.zeros(len(all_pairs))
 sig_pairs_first_gape_lengths = np.zeros(len(all_pairs))
+sig_pairs_first_gape_bout_lengths = np.zeros(len(all_pairs))
 for ap_i in range(len(all_pairs)):
 	ap = all_pairs[ap_i]
 	stat_first, p_first = mannwhitneyu(first_gapes[ap[0]], first_gapes[ap[1]])
 	if p_first <= 0.05:
 		sig_pairs_first_gapes[ap_i] = 1
-	stat_first_len, p_first_len = mannwhitneyu(first_gape_lengths[ap[0]], first_gape_lengths[ap[1]])
-	if p_first_len <= 0.05:
-		sig_pairs_first_gape_lengths[ap_i] = 1
+	if data_type == 1: #BSA
+		stat_first_len, p_first_len = mannwhitneyu(first_gape_lengths[ap[0]], first_gape_lengths[ap[1]])
+		if p_first_len <= 0.05:
+			sig_pairs_first_gape_lengths[ap_i] = 1
+	else: #Clustering
+		stat_first_len, p_first_len = mannwhitneyu(first_gape_bout_lengths[ap[0]], first_gape_bout_lengths[ap[1]])
+		if p_first_len <= 0.05:
+			sig_pairs_first_gape_bout_lengths[ap_i] = 1
 		
 #_____Plot across-animal/dataset stats_____
 #Plot box-and-whisker plots of first gapes
 bw_plot(first_gapes,first_gapes_data_names,all_pairs,sig_pairs_first_gapes,\
 	 'Time to First Gape (ms)','all','Time to First Gape',\
 		 '_time_to_first_gape_bw',first_gapes_dir)
-#Plot box-and-whisker plots of first gape lengths
-bw_plot(first_gape_lengths,first_gapes_data_names,all_pairs,sig_pairs_first_gape_lengths,\
-	 'First Gape Length (ms)','all','First Gape Length',\
-		 '_first_gape_lengths_bw',first_gapes_dir)
 #Plot cumulative histogram of first gapes
 hist_plot(first_gapes,first_gapes_data_names,'Time to First Gape (ms)',\
 		'all','Time to First Gape','_time_to_first_gape_cumhist',first_gapes_dir)
-#Plot cumulative histogram of first gape lengths
-hist_plot(first_gape_lengths,first_gapes_data_names,'First Gape Length (ms)',\
-		'all','First Gape Length','_first_gape_lengths_cumhist',first_gapes_dir)
+if data_type == 1: #BSA
+	#Plot box-and-whisker plots of first gape lengths
+	bw_plot(first_gape_lengths,first_gapes_data_names,all_pairs,sig_pairs_first_gape_lengths,\
+		 'First Gape Length (ms)','all','First Gape Length',\
+			 '_first_gape_lengths_bw',first_gapes_dir)
+	#Plot cumulative histogram of first gape lengths
+	hist_plot(first_gape_lengths,first_gapes_data_names,'First Gape Length (ms)',\
+			'all','First Gape Length','_first_gape_lengths_cumhist',first_gapes_dir)
+else: #Clustering
+	#Plot box-and-whisker plots of first gape lengths
+	bw_plot(first_gape_bout_lengths,first_gapes_data_names,all_pairs,sig_pairs_first_gape_bout_lengths,\
+		 'First Gape Bout Length (ms)','all','First Gape Bout Length',\
+			 '_first_gape_bout_lengths_bw',first_gapes_dir)
+	#Plot cumulative histogram of first gape lengths
+	hist_plot(first_gape_bout_lengths,first_gapes_data_names,'First Gape Bout Length (ms)',\
+			'all','First Gape Bout Length','_first_gape_bout_lengths_cumhist',first_gapes_dir)
 
 #%% Compare across animals the same tastes (must be imported in the same order too)
 
