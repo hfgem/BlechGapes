@@ -244,6 +244,8 @@ def cluster_stats(emg_data_dict,clust_save_dir,dict_save_dir):
 	
 	#____Normalized Width Analyses____
 	env_wid_save_dir = os.path.join(clust_save_dir,'Envelope_norm_width')
+	if not os.path.isdir(env_wid_save_dir):
+		os.mkdir(env_wid_save_dir)
 	norm_width_clust_gapes = dict()
 	#For each cluster calculate the taste representation ratios
 	for nc_i in range(nc_width):
@@ -331,6 +333,8 @@ def cluster_stats(emg_data_dict,clust_save_dir,dict_save_dir):
 	
 	#____Normalized Width/Height Analyses____
 	env_full_save_dir = os.path.join(clust_save_dir,'Envelope_norm_full')
+	if not os.path.isdir(env_full_save_dir):
+		os.mkdir(env_full_save_dir)
 	norm_full_clust_gapes = dict()
 	#For each cluster calculate the taste representation ratios
 	for nc_i in range(nc_full):

@@ -316,7 +316,10 @@ for na in range(num_anim):
 		gape_onset_dir = os.path.join(anim_dir,'gape_onset_plots')
 		if os.path.isdir(gape_onset_dir) == False:
 			os.mkdir(gape_onset_dir)
-		first_gape_save_dir = os.path.join(gape_onset_dir,anim_name + '_' + anim_taste_names[t_i] + '_first_gapes.npy')
+		gape_onset_type_dir = os.path.join(gape_onset_dir,type_name)
+		if os.path.isdir(gape_onset_type_dir) == False:
+			os.mkdir(gape_onset_type_dir)
+		first_gape_save_dir = os.path.join(gape_onset_type_dir,anim_name + '_' + anim_taste_names[t_i] + '_first_gapes.npy')
 		np.save(first_gape_save_dir, taste_first_gape_times)
 		#Add to dictionary
 		anim_first_gapes.append(taste_first_gapes)
@@ -465,6 +468,7 @@ for na in range(num_anim):
 	for t_i in range(num_tastes):
 		plt.plot([t_i,t_i],[first_gape_length_means[t_i]-first_gape_length_stds[t_i],first_gape_length_means[t_i]+first_gape_length_stds[t_i]],color=cmap[na],alpha=0.5,label='_nolegend_')
 	plt.plot(np.arange(num_tastes),first_gape_length_means,color=cmap[na],alpha=0.5,label='_nolegend_')
+
 
 
 
