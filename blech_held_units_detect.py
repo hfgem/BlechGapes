@@ -91,6 +91,7 @@ held_unit_storage = [] #placeholder storage for held units across days
 all_neur_combos = list(itertools.product(*all_neur_inds))
 all_day_combos = list(itertools.combinations(np.arange(num_days),2))
 
+all_inter_J3 = []
 for nc in all_neur_combos:
     unit_info_same = 1
     for dc in all_day_combos:
@@ -101,20 +102,32 @@ for nc in all_neur_combos:
     if unit_info_same == 1:
         #Collect waveforms to be compared
         waveforms = [] #list of numpy arrays
+        all_waveforms = []
         for day in range(len(nc)):
             wf = data_dict[day]['all_unit_waveforms'][nc[day]]
             if wf_type == 'norm_waveform':
-                waveforms.append(wf/nanstd(wf))
+                waveforms.append(wf/np.nanstd(wf))
+                all_waveforms.extend(wf/np.nanstd(wf))
             else:
                 waveforms.append(wf)
+                all_waveforms.extend(wf)
                 
         #Fit PCA to waveforms
         pca = PCA(n_components = 4)
-        pca.fit(np.concatenate((wf_day1, wf_day2), axis = 0))
-        pca_wf_day1 = pca.transform(wf_day1)
-        pca_wf_day2 = pca.transform(wf_day2)
+        pca.fit(np.array(all_waveforms))
+        day_pca = []
+        for day in range(len(nc)):
+            day_pca.append(pca.transform(np.array(waveforms[day])))
                 
         #Calculate the inter_J3 across days
+        all_days_inter_J3 = []
+        for dc in all_day_combos:
+            all_days_inter_J3.extend([calculate_J3(day_pca[dc[0]], day_pca[dc[1]])])
+        all_inter_J3.append(all_days_inter_J3) 
+        
+        #Do all inter_J3 match the cutoff?
+        if np.sum((np.array(all_intra_J3_cutoff) <= all_intra_J3_cutoff).astype('int')) = num_days:
+            
 
 #%% OLD CODE
 

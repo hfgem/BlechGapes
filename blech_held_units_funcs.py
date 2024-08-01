@@ -29,10 +29,10 @@ def get_unit_info(all_unit_info,
                                     'regular_spiking', 'single_unit']):
     return [all_unit_info[i] for i in unit_info_labels]
 
-def calculate_J3(wf_day1, wf_day2):
+def calculate_J3(wf_1, wf_2):
     # Send these off to calculate J1 and J2
-    J1 = calculate_J1(wf_day1, wf_day2)
-    J2 = calculate_J2(wf_day1, wf_day2)
+    J1 = calculate_J1(wf_1, wf_2)
+    J2 = calculate_J2(wf_1, wf_2)
     # Get J3 as the ratio of J2 and J1
     J3 = J2/J1
     return J3
