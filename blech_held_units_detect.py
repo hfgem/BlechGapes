@@ -44,7 +44,7 @@ for n_i in range(num_days):
             hdf5_name = files
     data_dict[n_i]['hdf5_name'] = hdf5_name
     #Open hdf5 file
-    hf5 = tables.open_file(hdf5_name, 'r')
+    hf5 = tables.open_file(os.path.join(dir_name,hdf5_name), 'r')
     num_neur = len(hf5.root.unit_descriptor[:])
     all_neur_inds.append(list(np.arange(num_neur)))
     data_dict[n_i]['num_neur'] = num_neur
@@ -53,7 +53,7 @@ for n_i in range(num_days):
     for unit in range(num_neur):
         # Only go ahead if this is a single unit
         if hf5.root.unit_descriptor[unit]['single_unit'] == 1:
-            exec("wf_day1 = hf51.root.sorted_units.unit%03d.waveforms[:]" % (unit))
+            exec("wf_day1 = hf5.root.sorted_units.unit%03d.waveforms[:]" % (unit))
             if wf_type == 'norm_waveform':
                 wf_day1 = wf_day1 / np.std(wf_day1)
             pca = PCA(n_components = 4)
@@ -65,7 +65,7 @@ for n_i in range(num_days):
     #Pull unit info for all units
     all_unit_info = []
     for unit in range(num_neur):
-        all_unit_info.append(get_unit_info(hf51.root.unit_descriptor[unit]))
+        all_unit_info.append(get_unit_info(hf5.root.unit_descriptor[unit]))
     data_dict[n_i]['all_unit_info'] = all_unit_info
     #Pull unit waveforms for all units
     all_unit_waveforms = []
@@ -89,15 +89,32 @@ held_unit_storage = [] #placeholder storage for held units across days
 
 #Calculate all pairwise unit tests
 all_neur_combos = list(itertools.product(*all_neur_inds))
+all_day_combos = list(itertools.combinations(np.arange(num_days),2))
 
 for nc in all_neur_combos:
-    #First check if unit info is save
-    get_unit_info(hf52.root.unit_descriptor[unit2]) == \
-       get_unit_info(hf51.root.unit_descriptor[unit1])
+    unit_info_same = 1
+    for dc in all_day_combos:
+        if data_dict[dc[0]]['all_unit_info'][nc[dc[0]]] != \
+            data_dict[dc[1]]['all_unit_info'][nc[dc[1]]]:
+                unit_info_same = 0
     
-    #Calculate the inter_J3 across days
-    
-
+    if unit_info_same == 1:
+        #Collect waveforms to be compared
+        waveforms = [] #list of numpy arrays
+        for day in range(len(nc)):
+            wf = data_dict[day]['all_unit_waveforms'][nc[day]]
+            if wf_type == 'norm_waveform':
+                waveforms.append(wf/nanstd(wf))
+            else:
+                waveforms.append(wf)
+                
+        #Fit PCA to waveforms
+        pca = PCA(n_components = 4)
+        pca.fit(np.concatenate((wf_day1, wf_day2), axis = 0))
+        pca_wf_day1 = pca.transform(wf_day1)
+        pca_wf_day2 = pca.transform(wf_day2)
+                
+        #Calculate the inter_J3 across days
 
 #%% OLD CODE
 
