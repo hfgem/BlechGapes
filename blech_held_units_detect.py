@@ -3,7 +3,7 @@ import sys
 import os
 
 current_path = os.path.realpath(__file__)
-os.chdir(current_path)
+os.chdir(('/').join(current_path.split('/')[:-1]))
 
 import numpy as np
 import tables
@@ -139,7 +139,7 @@ for nc in all_neur_combos:
         all_inter_J3.append(all_days_inter_J3) 
         
         #Do all inter_J3 match the cutoff?
-        if np.sum((np.array(all_intra_J3_cutoff) <= all_intra_J3_cutoff).astype('int')) == len(all_day_combos):
+        if np.sum((np.array(all_days_inter_J3) <= all_intra_J3_cutoff).astype('int')) == len(all_day_combos):
             #Save to csv the unit indices per day
             statement = '\n'
             for i in range(len(nc)-1):
