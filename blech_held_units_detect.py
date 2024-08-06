@@ -14,7 +14,7 @@ from sklearn.decomposition import PCA
 from scipy.spatial.distance import cdist
 import matplotlib.pyplot as plt
 import seaborn as sns
-from blech_held_units_funcs import *
+from functions.blech_held_units_funcs import *
     
 # Ask the user for the number of days to be compared
 num_days = int_input("How many days-worth of data are you comparing for held units (integer)? ")
