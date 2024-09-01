@@ -20,7 +20,7 @@ from functions.blech_held_units_funcs import *
 num_days = int_input("How many days-worth of data are you comparing for held units (integer)? ")
 
 # Ask the user for the percentile criterion to use to determine held units
-percent_criterion = easygui.multenterbox(msg = 'What percentile of the intra unit J3 distribution do you want to use to pull out held units?', fields = ['Percentile criterion (1-100) - lower is more conservative (e.g., 95)'])
+percent_criterion = easygui.multenterbox(msg = 'What percentile of the intra unit J3 distribution do you want to use to pull out held units?', fields = ['Percentile criterion (1-100) - lower is more conservative (common val = 95)'])
 percent_criterion = float(percent_criterion[0])
 
 # Ask the user for the percentile criterion to use to determine held units
