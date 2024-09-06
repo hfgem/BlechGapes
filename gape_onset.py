@@ -267,6 +267,9 @@ for na in range(num_anim):
 first_single_gapes_dir = os.path.join(results_dir,'first_single_gapes')
 if os.path.isdir(first_single_gapes_dir) == False:
     os.mkdir(first_single_gapes_dir)
+first_compound_gapes_dir = os.path.join(results_dir,'first_compound_gapes')
+if os.path.isdir(first_compound_gapes_dir) == False:
+    os.mkdir(first_compound_gapes_dir)
 
 #Collect first gape start and end times and plot stats
 first_single_gapes = []
@@ -400,40 +403,76 @@ for na in range(num_anim):
         stat_first_len, p_first_len = mannwhitneyu(anim_first_bout_lengths[ap[0]], anim_first_bout_lengths[ap[1]])
         if p_first_len <= 0.05:
             sig_pairs_first_bout_lengths[ap_i] = 1
-        
+    
+    #PLOTS FOR FIRST SINGLE GAPE DATA 
     #Plot box-and-whisker plots of first gapes
     bw_plot(anim_first_single_gapes,anim_taste_names,all_pairs,sig_pairs_first_single_gapes,\
-         'Time to First Gape (ms)',anim_name,'Time to First Gape',\
-             '_time_to_first_gape_bw',first_single_gapes_dir)
+         'Time to First Single Gape (ms)',anim_name,'Time to First Single Gape',\
+             '_time_to_first_single_gape_bw',first_single_gapes_dir)
     #Plot scatter/line trends across tastants of first gapes
-    scatt_line_plot(anim_first_single_gapes,anim_taste_names,all_pairs,'Time to First Gape (ms)',\
-                 anim_name,'Time to First Gape','_time_to_first_gape_scat',first_single_gapes_dir)
+    scatt_line_plot(anim_first_single_gapes,anim_taste_names,all_pairs,'Time to Single First Gape (ms)',\
+                 anim_name,'Time to Single First Gape','_time_to_first_single_gape_scat',first_single_gapes_dir)
     #Plot cumulative histogram of first gapes
-    hist_plot(anim_first_single_gapes,anim_taste_names,'Time to First Gape (ms)',\
-            anim_name,'Time to First Gape','_time_to_first_gape_cumhist',first_single_gapes_dir)
+    hist_plot(anim_first_single_gapes,anim_taste_names,'Time to First Single Gape (ms)',\
+            anim_name,'Time to First Single Gape','_time_to_first_single_gape_cumhist',first_single_gapes_dir)
     if data_type == 1: #BSA
         #Plot box-and-whisker plots of first gape lengths
-        bw_plot(anim_first_single_gape_lengths,anim_taste_names,all_pairs,sig_pairs_first_single_gape_lengths,\
-             'First Gape Length (ms)',anim_name,'First Gape Length',\
+        bw_plot(anim_first_single_gape_bout_lengths,anim_taste_names,all_pairs,sig_pairs_first_single_gape_lengths,\
+             'First Single Gape Length (ms)',anim_name,'First Single Gape Length',\
                  '_first_single_gape_lengths_bw',first_single_gapes_dir)
         #Plot cumulative histogram of first gape lengths
-        hist_plot(anim_first_single_gape_lengths,anim_taste_names,'First Gape Length (ms)',\
-                anim_name,'First Gape Length','_first_single_gape_lengths_cumhist',first_single_gapes_dir)
+        hist_plot(anim_first_single_gape_bout_lengths,anim_taste_names,'First Single Gape Length (ms)',\
+                anim_name,'First Single Gape Length','_first_single_gape_lengths_cumhist',first_single_gapes_dir)
         #Plot scatter/line trends across tastants of first gape lengths
-        scatt_line_plot(anim_first_single_gape_lengths,anim_taste_names,all_pairs,'First Gape Length (ms)',\
-                anim_name,'First Gape Length','_first_single_gape_lengths_scat',first_single_gapes_dir)
+        scatt_line_plot(anim_first_single_gape_bout_lengths,anim_taste_names,all_pairs,'First Single Gape Length (ms)',\
+                anim_name,'First Single Gape Length','_first_single_gape_lengths_scat',first_single_gapes_dir)
     else: #Clusters
         #Plot box-and-whisker plots of first gape lengths
         bw_plot(anim_first_single_gape_bout_lengths,anim_taste_names,all_pairs,sig_pairs_first_single_gape_bout_lengths,\
-             'First Gape Bout Length (ms)',anim_name,'First Gape Bout Length',\
+             'First Single Gape Bout Length (ms)',anim_name,'First Single Gape Bout Length',\
                  '_first_single_gape_bout_lengths_bw',first_single_gapes_dir)
         #Plot cumulative histogram of first gape lengths
-        hist_plot(anim_first_single_gape_bout_lengths,anim_taste_names,'First Gape Bout Length (ms)',\
-                anim_name,'First Gape Bout Length','_first_single_gape_bout_lengths_cumhist',first_single_gapes_dir)
+        hist_plot(anim_first_single_gape_bout_lengths,anim_taste_names,'First Single Gape Bout Length (ms)',\
+                anim_name,'First Single Gape Bout Length','_first_single_gape_bout_lengths_cumhist',first_single_gapes_dir)
         #Plot scatter/line trends across tastants of first gape lengths
-        scatt_line_plot(anim_first_single_gape_bout_lengths,anim_taste_names,all_pairs,'First Gape Bout Length (ms)',\
-                anim_name,'First Gape Bout Length','_first_single_gape_bout_lengths_scat',first_single_gapes_dir)
+        scatt_line_plot(anim_first_single_gape_bout_lengths,anim_taste_names,all_pairs,'First Single Gape Bout Length (ms)',\
+                anim_name,'First Single Gape Bout Length','_first_single_gape_bout_lengths_scat',first_single_gapes_dir)
+            
+    #PLOTS FOR FIRST COMPOUND GAPE DATA 
+    #Plot box-and-whisker plots of first gapes
+    bw_plot(anim_first_bouts,anim_taste_names,all_pairs,sig_pairs_first_single_gapes,\
+         'Time to First Compound Gape (ms)',anim_name,'Time to First Compound Gape',\
+             '_time_to_first_compound_gape_bw',first_compound_gapes_dir)
+    #Plot scatter/line trends across tastants of first gapes
+    scatt_line_plot(anim_first_bouts,anim_taste_names,all_pairs,'Time to First Compound Gape (ms)',\
+                 anim_name,'Time to First Compound Gape','_time_to_first_compound_gape_scat',first_compound_gapes_dir)
+    #Plot cumulative histogram of first gapes
+    hist_plot(anim_first_bouts,anim_taste_names,'Time to First Compound Gape (ms)',\
+            anim_name,'Time to First Compound Gape','_time_to_first_compound_gape_cumhist',first_compound_gapes_dir)
+    if data_type == 1: #BSA
+        #Plot box-and-whisker plots of first gape lengths
+        bw_plot(anim_first_bout_lengths,anim_taste_names,all_pairs,sig_pairs_first_single_gape_lengths,\
+             'First Compound Gape Length (ms)',anim_name,'First Compound Gape Length',\
+                 '_first_compound_gape_lengths_bw',first_compound_gapes_dir)
+        #Plot cumulative histogram of first gape lengths
+        hist_plot(anim_first_bout_lengths,anim_taste_names,'First Compound Gape Length (ms)',\
+                anim_name,'First Compound Gape Length','_first_compound_gape_lengths_cumhist',first_single_gapes_dir)
+        #Plot scatter/line trends across tastants of first gape lengths
+        scatt_line_plot(anim_first_bout_lengths,anim_taste_names,all_pairs,'First Compound Gape Length (ms)',\
+                anim_name,'First Compound Gape Length','_first_compound_gape_lengths_scat',first_compound_gapes_dir)
+    else: #Clusters
+        #Plot box-and-whisker plots of first gape lengths
+        bw_plot(anim_first_bout_lengths,anim_taste_names,all_pairs,sig_pairs_first_single_gape_bout_lengths,\
+             'First Compound Gape Bout Length (ms)',anim_name,'First Compound Gape Bout Length',\
+                 '_first_compound_gape_bout_lengths_bw',first_compound_gapes_dir)
+        #Plot cumulative histogram of first gape lengths
+        hist_plot(anim_first_bout_lengths,anim_taste_names,'First Compound Gape Bout Length (ms)',\
+                anim_name,'First Compound Gape Bout Length','_first_compound_gape_bout_lengths_cumhist',first_compound_gapes_dir)
+        #Plot scatter/line trends across tastants of first gape lengths
+        scatt_line_plot(anim_first_bout_lengths,anim_taste_names,all_pairs,'First Compound Gape Bout Length (ms)',\
+                anim_name,'First Compound Gape Bout Length','_first_compound_gape_bout_lengths_scat',first_compound_gapes_dir)
 
+#TO DO: UPDATE BELOW TO HAVE BOTH SINGLE AND COMPOUND GAPE ANALYSES
 #_____Calculate across-animal/dataset stats_____        
 all_pairs = list(combinations(np.arange(len(first_data_names)),2))
 sig_pairs_first_single_gapes = np.zeros(len(all_pairs))
