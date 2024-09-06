@@ -324,6 +324,9 @@ for na in range(num_anim):
                         last_gape_start = new_gape_start
                         last_gape_end = new_gape_end
                         last_bout_count = 1
+                if len(trial_gape_bouts) == 0:
+                    trial_gape_bouts.append([last_gape_start,last_gape_end])
+                    trial_gape_bout_counts.extend([last_bout_count])
                 if (trial_gape_bouts[-1][0] != last_gape_start)*(trial_gape_bouts[-1][1] != last_gape_end):
                     trial_gape_bouts.append([last_gape_start,last_gape_end])
                     trial_gape_bout_counts.extend([last_bout_count])
@@ -338,8 +341,8 @@ for na in range(num_anim):
                     taste_first_bout_onset.append(trial_gape_times[0][0])
                     taste_first_bout_lengths.extend([trial_gape_times[0][1]-trial_gape_times[0][0]])
                 else: #Cluster
-                    first_bout_ind = np.where(trial_gape_bout_counts > 1)[0]
-                    if ~np.isempty(first_bout_ind):
+                    first_bout_ind = np.where(np.array(trial_gape_bout_counts) > 1)[0]
+                    if len(first_bout_ind)>0:
                         taste_first_bout_onset.append(trial_gape_bouts[first_bout_ind[0]][0])
                         taste_first_bout_times.append(trial_gape_bouts[first_bout_ind[0]])
                         taste_first_bout_lengths.append(trial_gape_bouts[first_bout_ind[0]][1] - trial_gape_bouts[first_bout_ind[0]][0])
@@ -472,6 +475,7 @@ for na in range(num_anim):
         scatt_line_plot(anim_first_bout_lengths,anim_taste_names,all_pairs,'First Compound Gape Bout Length (ms)',\
                 anim_name,'First Compound Gape Bout Length','_first_compound_gape_bout_lengths_scat',first_compound_gapes_dir)
 
+#%%
 #TO DO: UPDATE BELOW TO HAVE BOTH SINGLE AND COMPOUND GAPE ANALYSES
 #_____Calculate across-animal/dataset stats_____        
 all_pairs = list(combinations(np.arange(len(first_data_names)),2))
