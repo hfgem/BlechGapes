@@ -133,7 +133,7 @@ pre_taste = 2000
 post_taste = 5000
 min_inter_peak_dist = 50  # min ms apart peaks have to be to count
 min_gape_band = 4
-max_gape_band = 6.5 #Travers & Norgren 1978 says mouth movements are 6.6 Hz
+max_gape_band = 6 #6.5 #Travers & Norgren 1978 says mouth movements are 6.6 Hz
 
 
 dataset_name = emg_data_dict['given_name']

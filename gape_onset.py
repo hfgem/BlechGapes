@@ -143,8 +143,6 @@ if data_type == 1:
     type_name = 'bsa_gape_onset'
 elif data_type == 2:
     type_name = 'cluster_gape_onset'
-    print("Please select the folder where the clustering gape data is stored. (Likely BlechGapes_analysis)")
-    clust_gape_dir = easygui.diropenbox(title='Please select the folder where data is stored.')
 else:
     raise Exception
 
@@ -173,6 +171,9 @@ for na in range(num_anim):
         all_gapes = np.squeeze(hf5.root.emg_BSA_results.gapes[:])
         hf5.close()
     else: #Import cluster data
+        #print("Please select the folder where the clustering gape data is stored. (Likely BlechGapes_analysis)")
+        #clust_gape_dir = easygui.diropenbox(title='Please select the folder where data is stored.')
+        clust_gape_dir = os.path.join(animal_dir,'BlechGapes_analysis')
         all_gapes = np.load(os.path.join(clust_gape_dir,'emg_clust_results.npy'))
     animal_gape_data = []
     num_tastes = np.shape(all_gapes)[0]
@@ -200,7 +201,7 @@ if not os.path.isdir(results_dir):
     os.mkdir(results_dir)
 
 #Save dictionary
-dict_save_dir = os.path.join(results_dir,'gape_onset_dict.pkl')
+dict_save_dir = os.path.join(results_dir,'gape_onset_dict.pkl') #BlechGapes_analysis is probably the folder you want
 f = open(dict_save_dir,"wb")
 pickle.dump(data_dict,f)
 #with open(dict_save_dir, "rb") as pickle_file:
@@ -227,13 +228,13 @@ gape_data_lengths = np.array(gape_data_lengths)
 
 #Get user input on the start time of a gape and length
 print("To analyze gape data, please select the gape limits.")
-gape_start_min = int_input("\tHow long after taste delivery (ms) do you want gape detection to begin? ")
-gape_start_max = int_input("\tHow long after taste delivery (ms) do you want gape detection to end? ")
+gape_start_min = int_input("\tHow long after taste delivery (ms) do you want gape detection to begin? ") #Probably 0
+gape_start_max = int_input("\tHow long after taste delivery (ms) do you want gape detection to end? ") #Probably 2000
 if data_type == 1:
     gape_end = int_input("\tWhat is the min length of a gape to consider (must be less than " + str(min(gape_data_lengths)) + ")? ")
 else:
     gape_end = 0
-    inter_gape_interval = int_input("\tWhat is the maximum interval (ms) between gapes to consider as part of a bout? ")
+    inter_gape_interval = int_input("\tWhat is the maximum interval (ms) between gapes to consider as part of a bout? ") #Maybe 167 ms
 #Pull out gape times
 for na in range(num_anim):
     anim_bool_gape_data = data_dict[na]['bool_gape_data'] #num tastes x [num_trials,num_time]
@@ -515,20 +516,20 @@ bw_plot(first_single_gape_bout_lengths,first_data_names,all_pairs,sig_pairs_firs
 #Plot cumulative histogram of first single gape lengths
 hist_plot(first_single_gape_bout_lengths,first_data_names,'First Gape Length (ms)',\
         'all','First Gape Length','_first_single_gape_lengths_cumhist',first_single_gapes_dir)
-#Plot box-and-whisker plots of first single gape onsets
+#Plot box-and-whisker plots of first compound gape onsets
 bw_plot(first_bouts,first_data_names,all_pairs,sig_pairs_first_bouts,\
      'Time to First Gape (ms)','all','Time to First Gape',\
-         '_time_to_first_compound_gape_bw',first_bout_save_dir)
-#Plot cumulative histogram of first single gape onsets
+         '_time_to_first_compound_gape_bw',first_compound_gapes_dir)
+#Plot cumulative histogram of first compound gape onsets
 hist_plot(first_bouts,first_data_names,'Time to First Gape (ms)',\
-        'all','Time to First Gape','_time_to_first_compound_gape_cumhist',first_bout_save_dir)
+        'all','Time to First Gape','_time_to_first_compound_gape_cumhist',first_compound_gapes_dir)
 #Plot box-and-whisker plots of first compound gape lengths
 bw_plot(first_bout_lengths,first_data_names,all_pairs,sig_pairs_first_bout_lengths,\
      'First Gape Length (ms)','all','First Gape Length',\
-         '_first_compound_gape_lengths_bw',first_bout_save_dir)
-#Plot cumulative histogram of first single gape lengths
+         '_first_compound_gape_lengths_bw',first_compound_gapes_dir)
+#Plot cumulative histogram of first compound gape lengths
 hist_plot(first_bout_lengths,first_data_names,'First Gape Length (ms)',\
-        'all','First Gape Length','_first_compound_gape_lengths_cumhist',first_bout_save_dir)
+        'all','First Gape Length','_first_compound_gape_lengths_cumhist',first_compound_gapes_dir)
 
 #%% Compare across animals the same tastes (must be imported in the same order too)
 
