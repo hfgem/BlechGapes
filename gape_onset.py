@@ -272,11 +272,11 @@ if os.path.isdir(first_compound_gapes_dir) == False:
     os.mkdir(first_compound_gapes_dir)
 
 #Collect first gape start and end times and plot stats
-first_single_gapes = []
-first_single_gape_bout_lengths = []
-first_data_names = []
-first_bouts = []
-first_bout_lengths = []
+first_single_gapes = [] #Onset of gapes
+first_single_gape_bout_lengths = [] #Length of bout using gape_end / inter_gape_interval
+first_data_names = [] #Names of animal_taste for dataset
+first_bouts = [] #Onset of first bout (with requirement of at least 2 gapes in a bout)
+first_bout_lengths = [] #Length of first bouts ^^
 #_____Plot within-animal/dataset stats_____
 for na in range(num_anim):
     anim_dir = data_dict[na]['dir']
@@ -475,53 +475,64 @@ for na in range(num_anim):
         scatt_line_plot(anim_first_bout_lengths,anim_taste_names,all_pairs,'First Compound Gape Bout Length (ms)',\
                 anim_name,'First Compound Gape Bout Length','_first_compound_gape_bout_lengths_scat',first_compound_gapes_dir)
 
-#%%
-#TO DO: UPDATE BELOW TO HAVE BOTH SINGLE AND COMPOUND GAPE ANALYSES
 #_____Calculate across-animal/dataset stats_____        
 all_pairs = list(combinations(np.arange(len(first_data_names)),2))
-sig_pairs_first_single_gapes = np.zeros(len(all_pairs))
-sig_pairs_first_single_gape_lengths = np.zeros(len(all_pairs))
-sig_pairs_first_single_gape_bout_lengths = np.zeros(len(all_pairs))
+sig_pairs_first_single_gapes = np.zeros(len(all_pairs)) #Calculated sig btwn pairs of first gape onset datasets
+sig_pairs_first_single_gape_bout_lengths = np.zeros(len(all_pairs)) #Calculated sig btwn pairs of first gape duration datasets
+sig_pairs_first_bouts = np.zeros(len(all_pairs)) #Calculated sig btwn pairs of first bout onset datasets
+sig_pairs_first_bout_lengths = np.zeros(len(all_pairs)) #Calculated sig btwn pairs of first bout duration datasets
 for ap_i in range(len(all_pairs)):
     ap = all_pairs[ap_i]
+    #First gape onset times
     stat_first, p_first = mannwhitneyu(first_single_gapes[ap[0]], first_single_gapes[ap[1]])
     if p_first <= 0.05:
         sig_pairs_first_single_gapes[ap_i] = 1
-    if data_type == 1: #BSA
-        stat_first_len, p_first_len = mannwhitneyu(first_single_gape_lengths[ap[0]], first_single_gape_lengths[ap[1]])
-        if p_first_len <= 0.05:
-            sig_pairs_first_single_gape_lengths[ap_i] = 1
-    else: #Clustering
-        stat_first_len, p_first_len = mannwhitneyu(first_single_gape_bout_lengths[ap[0]], first_single_gape_bout_lengths[ap[1]])
-        if p_first_len <= 0.05:
-            sig_pairs_first_single_gape_bout_lengths[ap_i] = 1
+    #First gape bout lengths
+    stat_first_len, p_first_len = mannwhitneyu(first_single_gape_bout_lengths[ap[0]], first_single_gape_bout_lengths[ap[1]])
+    if p_first_len <= 0.05:
+        sig_pairs_first_single_gape_bout_lengths[ap_i] = 1
+    #First consecutive bout onset times
+    stat_bout, p_bout = mannwhitneyu(first_bouts[ap[0]], first_bouts[ap[1]])
+    if p_bout <= 0.05:
+        sig_pairs_first_bouts[ap_i] = 1
+    #First consecutive bout lengths
+    stat_bout_len, p_bout_len = mannwhitneyu(first_bout_lengths[ap[0]], first_bout_lengths[ap[1]])
+    if p_bout_len <= 0.05:
+        sig_pairs_first_bout_lengths[ap_i] = 1
         
 #_____Plot across-animal/dataset stats_____
-#Plot box-and-whisker plots of first gapes
+#Plot box-and-whisker plots of first single gape onsets
 bw_plot(first_single_gapes,first_data_names,all_pairs,sig_pairs_first_single_gapes,\
      'Time to First Gape (ms)','all','Time to First Gape',\
          '_time_to_first_gape_bw',first_single_gapes_dir)
-#Plot cumulative histogram of first gapes
+#Plot cumulative histogram of first single gape onsets
 hist_plot(first_single_gapes,first_data_names,'Time to First Gape (ms)',\
         'all','Time to First Gape','_time_to_first_gape_cumhist',first_single_gapes_dir)
-if data_type == 1: #BSA
-    #Plot box-and-whisker plots of first gape lengths
-    bw_plot(first_single_gape_lengths,first_data_names,all_pairs,sig_pairs_first_single_gape_lengths,\
-         'First Gape Length (ms)','all','First Gape Length',\
-             '_first_single_gape_lengths_bw',first_single_gapes_dir)
-    #Plot cumulative histogram of first gape lengths
-    hist_plot(first_single_gape_lengths,first_data_names,'First Gape Length (ms)',\
-            'all','First Gape Length','_first_single_gape_lengths_cumhist',first_single_gapes_dir)
-else: #Clustering
-    #Plot box-and-whisker plots of first gape lengths
-    bw_plot(first_single_gape_bout_lengths,first_data_names,all_pairs,sig_pairs_first_single_gape_bout_lengths,\
-         'First Gape Bout Length (ms)','all','First Gape Bout Length',\
-             '_first_single_gape_bout_lengths_bw',first_single_gapes_dir)
-    #Plot cumulative histogram of first gape lengths
-    hist_plot(first_single_gape_bout_lengths,first_data_names,'First Gape Bout Length (ms)',\
-            'all','First Gape Bout Length','_first_single_gape_bout_lengths_cumhist',first_single_gapes_dir)
+#Plot box-and-whisker plots of first single gape lengths
+bw_plot(first_single_gape_bout_lengths,first_data_names,all_pairs,sig_pairs_first_single_gape_lengths,\
+     'First Gape Length (ms)','all','First Gape Length',\
+         '_first_single_gape_lengths_bw',first_single_gapes_dir)
+#Plot cumulative histogram of first single gape lengths
+hist_plot(first_single_gape_bout_lengths,first_data_names,'First Gape Length (ms)',\
+        'all','First Gape Length','_first_single_gape_lengths_cumhist',first_single_gapes_dir)
+#Plot box-and-whisker plots of first single gape onsets
+bw_plot(first_bouts,first_data_names,all_pairs,sig_pairs_first_bouts,\
+     'Time to First Gape (ms)','all','Time to First Gape',\
+         '_time_to_first_compound_gape_bw',first_bout_save_dir)
+#Plot cumulative histogram of first single gape onsets
+hist_plot(first_bouts,first_data_names,'Time to First Gape (ms)',\
+        'all','Time to First Gape','_time_to_first_compound_gape_cumhist',first_bout_save_dir)
+#Plot box-and-whisker plots of first compound gape lengths
+bw_plot(first_bout_lengths,first_data_names,all_pairs,sig_pairs_first_bout_lengths,\
+     'First Gape Length (ms)','all','First Gape Length',\
+         '_first_compound_gape_lengths_bw',first_bout_save_dir)
+#Plot cumulative histogram of first single gape lengths
+hist_plot(first_bout_lengths,first_data_names,'First Gape Length (ms)',\
+        'all','First Gape Length','_first_compound_gape_lengths_cumhist',first_bout_save_dir)
 
 #%% Compare across animals the same tastes (must be imported in the same order too)
+
+##TO DO: Update to do first bout analyses as well
 
 f_compare_first = plt.figure()
 f_compare_length = plt.figure()
