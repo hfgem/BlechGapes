@@ -517,5 +517,55 @@ for g_i in range(len(norm_width_env_gape_storage)):
         keep_gape_inds[g_i] = 1
 
 # Now save the updated 'emg_clust_results.npy' file with the selected true gapes
+#TODO: why are the keep_gape_inds not being used?
 np.save(os.path.join(results_dir, 'emg_clust_results.npy'),
         np.array(all_taste_gapes))
+
+#%%% Test cluster results against scoring results from BORIS
+#This will only work if you've actually run scoring in BORIS and output the
+#scoring data to .csv files in a single folder. It also relies on your running
+#BORIS_Converter.py prior to running this code-block to ensure the scoring data
+#is converted to a useable format for the analysis.
+
+for nf in range(len(emg_data_dict)):
+    dataset_name =  emg_data_dict[nf]['given_name']
+    print("Please select the folder where BORIS reformatted scoring data is stored for " + dataset_name)
+    boris_dir = filedialog.askdirectory()
+    #Pull out all csv file names from directory
+    boris_file_list = os.listdir(data_dir)
+    csv_file_list = []
+    for df in boris_file_list:
+        if df[-4:] == '.npy':
+            csv_file_list.append(df)
+    del df
+    #All names are stored in the format [behavior]_[taste].csv
+    #Pull out the unique behaviors and tastes in the directory
+    unique_boris_behaviors = []
+    unique_boris_tastes = []
+    for cf in csv_file_list:
+        name_only = cf.split('.')[0]
+        unique_boris_tastes.extend([name_only.split('_')[-1]])
+        unique_boris_behaviors.extend([('_').join(name_only.split('_')[:-1])])
+    unique_boris_behaviors = [str(ub) for ub in np.unique(unique_boris_behaviors)]
+    unique_boris_tastes = [str(ut) for ut in np.unique(unique_boris_tastes)]
+    del cf, name_only
+    #Determine which index of behaviors is the gape
+    print("BORIS Index: Behavior")
+    for bb_i, bb in enumerate(unique_boris_behaviors):
+        print(str(bb_i) + ': ' + bb)
+    print(str(-1) + ": None of the above.")
+    gape_index = int_input("Which index is the gape index?")
+    #Now align tastes in this directory with tastes in the cluster dataset
+    taste_names = emg_data_dict[nf]['taste_names']
+    boris_index_match = [] #Index of boris taste aligned with data taste (-1 if not available)
+    for t_n in taste_names:
+        print("BORIS Index: Taste")
+        for bt_i, bt in enumerate(unique_boris_tastes):
+            print(str(bt_i) + ': ' + bt)
+        print(str(-1) + ": None of the above.")
+        index = int_input("Which index aligns with " + t_n + "?")
+        boris_index_match.extend([index])
+    #Run through each taste and each delivery and check if there's BORIS data then compare
+    
+    
+
