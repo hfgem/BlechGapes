@@ -10,7 +10,6 @@ scoring software. Outputs are .csv files that need to be reformatted into
 arrays by movement type of onset and offset surrounding taste delivery.
 """
 
-import sys
 import os
 import csv
 import easygui
@@ -98,12 +97,14 @@ max_trials = np.max(all_trial_inds)
 pre_taste = 2000
 post_taste = np.max(all_media_durations).astype('int')*1000
 
+#Create all-zero numpy arrays for storage
 for ut in unique_tastes:
     ut_combined = ('_').join(ut.split(' '))
     for ub in unique_behaviors:
         ub_combined = ('_').join(ub.split(' '))
         exec(ub_combined + '_' + ut_combined + ' = np.zeros((max_trials,pre_taste+post_taste))')
-        
+
+#Set numpy arrays equal to 1 where the behavior is occurring
 for d_i in range(len(reformat_data)):
     t = reformat_data[d_i]['taste']
     t_combined = ('_').join(t.split(' '))
@@ -120,12 +121,14 @@ for d_i in range(len(reformat_data)):
         exec(b_combined + '_' + t_combined + '[' + str(trial_ind) + ',' + \
              str(b_start) + ':' + str(b_stop) + ']' + ' = np.ones(' + \
              str(b_stop) + '-' + str(b_start) + ')')
-                    
+  
+#Save the new binary numpy arrays to folder                  
 for ut in unique_tastes:
     ut_combined = ('_').join(ut.split(' '))
     for ub in unique_behaviors:
         ub_combined = ('_').join(ub.split(' '))
-        data_array = exec(ub_combined + '_' + ut_combined)
-        np.save(os.path.join(new_save_dir,full_name + '.npy'),full_name)
+        full_name = ub_combined + '_' + ut_combined
+        data_array = eval(full_name)
+        np.save(os.path.join(new_save_dir,full_name+'.npy'),data_array)
 
     

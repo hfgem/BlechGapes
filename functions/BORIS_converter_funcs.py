@@ -60,3 +60,4 @@ def reformat_data(csv_data_list, media_dur_index, behavior_index, modifier_index
             behavior_end_times.extend([1000*(float(csv_data_list[d_i][behavior_time_index]))])
             
     return media_durations, behavior_names, behavior_start_times, behavior_end_times
+
