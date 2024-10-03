@@ -213,29 +213,29 @@ def run_n_clustering(norm_width_nc,norm_width_env_gape_storage,
 						  env_norm_full_2D,env_norm_full_clust_centers_2D,\
 							  gape_start_times_group,gape_start_times_labels)
 		
-	emg_data_dict[nf]['env_norm_width_n_clusters'] = env_norm_width_n_clusters
-	emg_data_dict[nf]['env_norm_full_n_clusters'] = env_norm_full_n_clusters
-	emg_data_dict[nf]['norm_width_dict'] = norm_width_dict
-	emg_data_dict[nf]['norm_full_dict'] = norm_full_dict
+	emg_data_dict['env_norm_width_n_clusters'] = env_norm_width_n_clusters
+	emg_data_dict['env_norm_full_n_clusters'] = env_norm_full_n_clusters
+	emg_data_dict['norm_width_dict'] = norm_width_dict
+	emg_data_dict['norm_full_dict'] = norm_full_dict
 	
 	#Save updated dictionary
 	with gzip.open(dict_save_dir, 'wb') as f:
 		pickle.dump(emg_data_dict, f)
 	
-def cluster_stats(nf,emg_data_dict,clust_save_dir,dict_save_dir):
+def cluster_stats(emg_data_dict,clust_save_dir,dict_save_dir):
 	
 	#____Grab relevant data____
-	env_data = emg_data_dict[nf]['env']
-	gape_start_times = emg_data_dict[nf]['gape_start_times']
+	env_data = emg_data_dict['env']
+	gape_start_times = emg_data_dict['gape_start_times']
 	num_gapes = len(gape_start_times)
-	gape_tastes = emg_data_dict[nf]['gape_tastes']
-	nc_width = emg_data_dict[nf]['env_norm_width_n_clusters']
-	nc_full = emg_data_dict[nf]['env_norm_full_n_clusters']
-	norm_width_labels = emg_data_dict[nf]['norm_width_dict']['labels']
-	norm_full_labels = emg_data_dict[nf]['norm_full_dict']['labels']
-	taste_names = emg_data_dict[nf]['taste_names']
-	norm_full_env_gape_storage = emg_data_dict[nf]['norm_full_env_gape_storage']
-	norm_width_env_gape_storage = emg_data_dict[nf]['norm_width_env_gape_storage']
+	gape_tastes = emg_data_dict['gape_tastes']
+	nc_width = emg_data_dict['env_norm_width_n_clusters']
+	nc_full = emg_data_dict['env_norm_full_n_clusters']
+	norm_width_labels = emg_data_dict['norm_width_dict']['labels']
+	norm_full_labels = emg_data_dict['norm_full_dict']['labels']
+	taste_names = emg_data_dict['taste_names']
+	norm_full_env_gape_storage = emg_data_dict['norm_full_env_gape_storage']
+	norm_width_env_gape_storage = emg_data_dict['norm_width_env_gape_storage']
 	
 	#____Plot Settings____
 	cluster_colors_norm_width = cm.viridis(np.linspace(0,1,nc_width))
@@ -244,6 +244,8 @@ def cluster_stats(nf,emg_data_dict,clust_save_dir,dict_save_dir):
 	
 	#____Normalized Width Analyses____
 	env_wid_save_dir = os.path.join(clust_save_dir,'Envelope_norm_width')
+	if not os.path.isdir(env_wid_save_dir):
+		os.mkdir(env_wid_save_dir)
 	norm_width_clust_gapes = dict()
 	#For each cluster calculate the taste representation ratios
 	for nc_i in range(nc_width):
@@ -331,6 +333,8 @@ def cluster_stats(nf,emg_data_dict,clust_save_dir,dict_save_dir):
 	
 	#____Normalized Width/Height Analyses____
 	env_full_save_dir = os.path.join(clust_save_dir,'Envelope_norm_full')
+	if not os.path.isdir(env_full_save_dir):
+		os.mkdir(env_full_save_dir)
 	norm_full_clust_gapes = dict()
 	#For each cluster calculate the taste representation ratios
 	for nc_i in range(nc_full):
@@ -414,8 +418,8 @@ def cluster_stats(nf,emg_data_dict,clust_save_dir,dict_save_dir):
 	
 	#____Save____
 	#Save results to dict
-	emg_data_dict[nf]['norm_width_clust_gapes'] = norm_width_clust_gapes
-	emg_data_dict[nf]['norm_full_clust_gapes'] = norm_full_clust_gapes
+	emg_data_dict['norm_width_clust_gapes'] = norm_width_clust_gapes
+	emg_data_dict['norm_full_clust_gapes'] = norm_full_clust_gapes
 	#Save updated dictionary
 	f = open(dict_save_dir,"wb")
 	pickle.dump(emg_data_dict,f)	
