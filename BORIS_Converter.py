@@ -16,6 +16,8 @@ import easygui
 import numpy as np
 import functions.BORIS_converter_funcs as bcf
 
+pre_taste = 2000 #For reformatting the data, how many ms before taste delivery to save?
+
 #Have the user first select the folder where the BORIS output files exist
 print("Please select the folder where the BORIS data is stored.")
 data_dir = easygui.diropenbox(title='Please select the folder where data is stored.')
@@ -63,9 +65,10 @@ for csv_ind, csv_name in enumerate(csv_file_list):
         quit()
         
     #Now reformat data!
-    media_durations, behavior_names, behavior_start_times, behavior_end_times = \
+    behavior_names, behavior_start_times, behavior_end_times = \
         bcf.reformat_data(csv_data_list, media_dur_index, behavior_index, \
-                          modifier_index, behavior_type_index, behavior_time_index)
+                          modifier_index, behavior_type_index, behavior_time_index, \
+                              pre_taste)
     
     #Store reformatted data in dictionary
     reformat_data[csv_ind] = dict()
@@ -77,7 +80,8 @@ for csv_ind, csv_name in enumerate(csv_file_list):
     reformat_data[csv_ind]['behavior_end_times'] = behavior_end_times #In ms from taste delivery
     
     #Store all experiment properties
-    all_media_durations.extend(media_durations)
+    if len(behavior_end_times) > 0:
+        all_media_durations.extend([np.max(behavior_end_times)])
     all_behavior_names.extend(behavior_names)
     all_taste_names.extend([taste_name])
     all_trial_inds.extend([int(trial_index)])
@@ -94,8 +98,7 @@ unique_behaviors = [str(i) for i in unique_behaviors]
 unique_tastes = np.unique(all_taste_names)
 unique_tastes = [str(i) for i in unique_tastes]
 max_trials = np.max(all_trial_inds)
-pre_taste = 2000
-post_taste = np.max(all_media_durations).astype('int')*1000
+post_taste = np.max(all_media_durations).astype('int')*1000 - pre_taste
 
 #Create all-zero numpy arrays for storage
 for ut in unique_tastes:
@@ -116,8 +119,8 @@ for d_i in range(len(reformat_data)):
     for b_i in range(num_behaviors):
         b = b_list[b_i]
         b_combined = ('_').join(b.split(' '))
-        b_start = int(np.floor(b_starts[b_i])) + 2000
-        b_stop = int(np.ceil(b_stops[b_i])) + 2000
+        b_start = int(np.floor(b_starts[b_i]))
+        b_stop = int(np.ceil(b_stops[b_i]))
         exec(b_combined + '_' + t_combined + '[' + str(trial_ind) + ',' + \
              str(b_start) + ':' + str(b_stop) + ']' + ' = np.ones(' + \
              str(b_stop) + '-' + str(b_start) + ')')

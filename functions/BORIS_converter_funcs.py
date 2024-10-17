@@ -43,21 +43,24 @@ def data_exists_check(behavior_index,behavior_type_index,behavior_time_index):
     return check
 
 def reformat_data(csv_data_list, media_dur_index, behavior_index, modifier_index, 
-                  behavior_type_index, behavior_time_index):
-    media_durations = []
+                  behavior_type_index, behavior_time_index, pre_taste):
     behavior_names = []
     behavior_start_times = []
     behavior_end_times = []
+    #First find the light point time
+    point_time = 0
     for d_i in np.arange(1,len(csv_data_list)):
-        media_durations.extend([float(csv_data_list[d_i][media_dur_index])])
+        if csv_data_list[d_i][behavior_type_index] == 'POINT':
+            point_time = 1000*float(csv_data_list[d_i][behavior_time_index])
+    for d_i in np.arange(1,len(csv_data_list)):
         behavior_name = csv_data_list[d_i][behavior_index]
         if behavior_name == 'mouth or tongue movement':
             behavior_name = csv_data_list[d_i][modifier_index]
         if csv_data_list[d_i][behavior_type_index] == 'START':
             behavior_names.extend([behavior_name])
-            behavior_start_times.extend([1000*(float(csv_data_list[d_i][behavior_time_index]))])
+            behavior_start_times.extend([pre_taste + 1000*(float(csv_data_list[d_i][behavior_time_index])) - point_time])
         if csv_data_list[d_i][behavior_type_index] == 'STOP':
-            behavior_end_times.extend([1000*(float(csv_data_list[d_i][behavior_time_index]))])
-            
-    return media_durations, behavior_names, behavior_start_times, behavior_end_times
+            behavior_end_times.extend([pre_taste + 1000*(float(csv_data_list[d_i][behavior_time_index])) - point_time])
+    
+    return behavior_names, behavior_start_times, behavior_end_times
 
