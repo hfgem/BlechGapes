@@ -208,7 +208,7 @@ for t_i, t_name in enumerate(taste_names):
         false_positive = np.sum([np.sum(cluster_behavior_overlap[ngi]) for ngi in not_gape_inds]) #BORIS marked as a different behavior other than gaping, but marked as gape by clustering
         true_negative = np.sum([len(cluster_behavior_overlap[i]) for i in range(len(cluster_behavior_overlap))]) - (true_positive + false_negative + false_positive)
         plt.pie([true_positive,false_negative,false_positive,true_negative], \
-                labels=['true cluster gapes','missed cluster gapes','false cluster gapes (other behavior)','true cluster not gape'], \
+                labels=['true cluster gapes','missed cluster gapes','false cluster gapes \n(other behavior)','true cluster \nnot gape'], \
                     autopct='%1.1f%%')
         plt.title(t_name + ' all behavior rates')
         plt.tight_layout()
@@ -241,7 +241,7 @@ plt.ylim([0,100])
 plt.xticks(np.arange(len(taste_names)),taste_names)
 plt.ylabel('% Successfully Clustered Gapes')
 plt.xlabel('Taste')
-plt.title('Successfully Clustered Gapes (vs. BORIS)')
+plt.title('Successfully Clustered Gapes \n(vs. BORIS)')
 plt.tight_layout()
 f_gape_success.savefig(os.path.join(overlap_save_dir,'gape_success_rates.png'))
 f_gape_success.savefig(os.path.join(overlap_save_dir,'gape_success_rates.svg'))
@@ -257,7 +257,7 @@ plt.ylim([0,100])
 plt.xticks(np.arange(len(taste_names)),taste_names)
 plt.ylabel('% Success Overall')
 plt.xlabel('Taste')
-plt.title('Successful Identification of Both Gapes and Nongapes (vs. BORIS)')
+plt.title('Successful Identification of \nBoth Gapes and Nongapes \n(vs. BORIS)')
 plt.tight_layout()
 f_taste_success.savefig(os.path.join(overlap_save_dir,'taste_success_rates.png'))
 f_taste_success.savefig(os.path.join(overlap_save_dir,'taste_success_rates.svg'))
