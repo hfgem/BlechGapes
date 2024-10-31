@@ -77,7 +77,7 @@ if not os.path.isdir(overlap_save_dir):
 pre_taste = 2000 #how many bins are before delivery
 video_FPS = 30 #how many frames per second is the video shot at?
 cluster_overlap_buffer = np.ceil(1000/video_FPS).astype('int') #in ms
-cluster_overlap_buffer = 100
+
 
 #Pull out the unique behaviors and tastes in the directory
 unique_boris_behaviors = []
@@ -110,6 +110,7 @@ del t_n, bt_i, bt, index
 
 #Run through each taste and each delivery and check if there's BORIS data then compare
 taste_gape_success = []
+taste_all_success = []
 for t_i, t_name in enumerate(taste_names):
     bt_i = boris_index_match[t_i]
     if bt_i >= 0: #A BORIS match exists   
@@ -124,9 +125,38 @@ for t_i, t_name in enumerate(taste_names):
                 BORIS_behavior_data.extend([Bbd])
                 if bb_i == gape_index:
                     BORIS_gape_index = bb_i
+                del Bbd, bb_i, bb_name
             except:
                 print("No BORIS data for combination " + t_name + " " + bb_name)
-        del Bbd, bb_i, bb_name
+        not_gape_inds = np.setdiff1d(np.arange(len(BORIS_behavior_names)),BORIS_gape_index*np.ones(1))
+        
+        #Add buffer around true gape times to avoid incorrect false positives
+        if BORIS_gape_index != -1:
+            #Create a buffered gape template
+            BORIS_gape_data_modified = np.zeros(np.shape(BORIS_behavior_data[BORIS_gape_index]))
+            BORIS_gape_data_modified[:] = BORIS_behavior_data[BORIS_gape_index]
+            BORIS_trials, BORIS_len = np.shape(BORIS_gape_data_modified)
+            for bt_i in range(BORIS_trials):
+                trial_data_mod = np.zeros(np.shape(BORIS_gape_data_modified[bt_i,:]))
+                trial_data_mod[1:-1] = BORIS_gape_data_modified[bt_i,1:-1]
+                trial_data_mod[0] = 0
+                trial_data_mod[-1] = 0
+                BORIS_gape_trial_diff = np.diff(trial_data_mod)
+                BORIS_gape_starts = np.where(BORIS_gape_trial_diff == 1)[0]
+                BORIS_gape_ends = np.where(BORIS_gape_trial_diff == -1)[0]
+                for bgs_i in BORIS_gape_starts:
+                    new_start = np.max([0,bgs_i-cluster_overlap_buffer])
+                    BORIS_gape_data_modified[bt_i,new_start:bgs_i] = 1
+                for bge_i in BORIS_gape_ends:
+                    new_end = np.min([BORIS_len,bge_i+cluster_overlap_buffer])
+                    BORIS_gape_data_modified[bt_i,bge_i:new_end] = 1
+            BORIS_gape_data_template = np.abs(BORIS_gape_data_modified-1)
+            #Modify the non-gape behavior files
+            for ng_i in not_gape_inds:
+                non_gape_data = BORIS_behavior_data[ng_i]
+                masked_non_gape_data = BORIS_gape_data_template*non_gape_data
+                BORIS_behavior_data[ng_i] = masked_non_gape_data
+        
         #Gather cluster results for gapes to this taste
         bin_cluster_gapes = all_taste_gapes[t_i,:,:].squeeze() #trials x time
         _, clust_len = np.shape(bin_cluster_gapes)
@@ -173,15 +203,15 @@ for t_i, t_name in enumerate(taste_names):
         
         #Plot true positive, false positive, true negative, and false negative rates by behavior
         f_gape_rates = plt.figure(figsize=(5,5))
-        not_gape_inds = np.setdiff1d(np.arange(len(BORIS_behavior_names)),BORIS_gape_index*np.ones(1))
-        true_positive = np.sum(cluster_behavior_overlap[BORIS_gape_index])
-        false_negative = len(cluster_behavior_overlap[BORIS_gape_index]) - true_positive
-        false_positive = np.sum([np.sum(cluster_behavior_overlap[ngi]) for ngi in not_gape_inds])
+        true_positive = np.sum(cluster_behavior_overlap[BORIS_gape_index]) #if gape marked in BORIS and clustering also marked gape
+        false_negative = len(cluster_behavior_overlap[BORIS_gape_index]) - true_positive #gape marked in BORIS, but clustering did not find gape
+        false_positive = np.sum([np.sum(cluster_behavior_overlap[ngi]) for ngi in not_gape_inds]) #BORIS marked as a different behavior other than gaping, but marked as gape by clustering
         true_negative = np.sum([len(cluster_behavior_overlap[i]) for i in range(len(cluster_behavior_overlap))]) - (true_positive + false_negative + false_positive)
         plt.pie([true_positive,false_negative,false_positive,true_negative], \
                 labels=['true cluster gapes','missed cluster gapes','false cluster gapes (other behavior)','true cluster not gape'], \
                     autopct='%1.1f%%')
         plt.title(t_name + ' all behavior rates')
+        plt.tight_layout()
         f_gape_rates.savefig(os.path.join(overlap_save_dir,t_name+'_all_behavior_rates.png'))
         f_gape_rates.savefig(os.path.join(overlap_save_dir,t_name+'_all_behavior_rates.svg'))
         plt.close(f_gape_rates)
@@ -190,16 +220,18 @@ for t_i, t_name in enumerate(taste_names):
         plt.pie([true_positive, false_negative], labels=['true cluster gapes', \
                 'missed cluster gapes'],autopct='%1.1f%%')
         plt.title(t_name + ' just gape rates')
+        plt.tight_layout()
         f_just_gapes.savefig(os.path.join(overlap_save_dir,t_name+'_gape_rates.png'))
         f_just_gapes.savefig(os.path.join(overlap_save_dir,t_name+'_gape_rates.svg'))
         plt.close(f_just_gapes)
         
         taste_gape_success.extend([true_positive/(true_positive+false_negative)])
+        taste_all_success.extend([(true_positive + true_negative)/(true_positive + true_negative + false_negative + false_positive)])
         
     del bt_i
 del t_i, t_name
 
-f_taste_success = plt.figure(figsize=(5,5))
+f_gape_success = plt.figure(figsize=(5,5))
 plt.plot(np.arange(len(taste_names)),100*np.array(taste_gape_success),label='_')
 mean = np.nanmean(100*np.array(taste_gape_success))
 plt.axhline(mean,linestyle='dashed',\
@@ -210,6 +242,22 @@ plt.xticks(np.arange(len(taste_names)),taste_names)
 plt.ylabel('% Successfully Clustered Gapes')
 plt.xlabel('Taste')
 plt.title('Successfully Clustered Gapes (vs. BORIS)')
+plt.tight_layout()
+f_gape_success.savefig(os.path.join(overlap_save_dir,'gape_success_rates.png'))
+f_gape_success.savefig(os.path.join(overlap_save_dir,'gape_success_rates.svg'))
+plt.close(f_gape_success)
+
+f_taste_success = plt.figure(figsize=(5,5))
+plt.plot(np.arange(len(taste_names)),100*np.array(taste_all_success),label='_')
+mean = np.nanmean(100*np.array(taste_all_success))
+plt.axhline(mean,linestyle='dashed',\
+            color='k',label='mean = ' + str(np.round(mean,2)))
+plt.legend()
+plt.ylim([0,100])
+plt.xticks(np.arange(len(taste_names)),taste_names)
+plt.ylabel('% Success Overall')
+plt.xlabel('Taste')
+plt.title('Successful Identification of Both Gapes and Nongapes (vs. BORIS)')
 plt.tight_layout()
 f_taste_success.savefig(os.path.join(overlap_save_dir,'taste_success_rates.png'))
 f_taste_success.savefig(os.path.join(overlap_save_dir,'taste_success_rates.svg'))
