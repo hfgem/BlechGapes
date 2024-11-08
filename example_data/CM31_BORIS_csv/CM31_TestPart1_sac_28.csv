@@ -1,2 +1,0 @@
-Observation id,Observation date,Description,Observation duration,Observation type,Source,Time offset (s),Media duration (s),FPS,Subject,Behavior,Behavioral category,Modifier #1,Modifier #2,Behavior type,Time,Media file name,Image index,Image file path,Comment
-CM31_TestPart1_sac_28,2024-02-27 16:22:04,,0.000,Media file(s),player #1:/media/cmazzio/large_data/Videos/CM31_videos/CTA_Test_part1/saccharin_trial_28.avi,0.0,6.000,30.000,,trial start,,None,out of view,POINT,1.400,/media/cmazzio/large_data/Videos/CM31_videos/CTA_Test_part1/saccharin_trial_28.avi,42,NA,

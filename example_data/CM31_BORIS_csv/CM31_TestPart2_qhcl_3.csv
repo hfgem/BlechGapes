@@ -1,2 +1,0 @@
-Observation id,Observation date,Description,Observation duration,Observation type,Source,Time offset (s),Media duration (s),FPS,Subject,Behavior,Behavioral category,Modifier #1,Modifier #2,Behavior type,Time,Media file name,Image index,Image file path,Comment
-CM31_TestPart2_qhcl_3,2024-03-05 14:11:29,,0.000,Media file(s),player #1:/media/cmazzio/large_data/Videos/CM31_videos/CTA_Test_part2/quinine_trial_3.avi,0.0,4.600,30.000,,trial start,,None,out of view,POINT,1.433,/media/cmazzio/large_data/Videos/CM31_videos/CTA_Test_part2/quinine_trial_3.avi,43,NA,
