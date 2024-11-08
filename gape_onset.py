@@ -286,6 +286,16 @@ first_bout_lengths = [] #Length of first bouts ^^
 #_____Plot within-animal/dataset stats_____
 for na in range(num_anim):
     anim_dir = data_dict[na]['dir']
+    gape_onset_dir = os.path.join(anim_dir,'gape_onset_plots')
+    if os.path.isdir(gape_onset_dir) == False:
+        os.mkdir(gape_onset_dir)
+    gape_onset_type_dir = os.path.join(gape_onset_dir,type_name)
+    if os.path.isdir(gape_onset_type_dir) == False:
+        os.mkdir(gape_onset_type_dir)
+    else:
+        files_in_gape_onset_dir = os.listdir(gape_onset_type_dir)
+        for f_name in files_in_gape_onset_dir:
+            os.remove(os.path.join(gape_onset_type_dir,f_name))
     anim_name = data_dict[na]['given_name']
     anim_taste_names = data_dict[na]['taste_names']
     joint_names = [anim_name+'_'+anim_taste_name for anim_taste_name in anim_taste_names]
@@ -352,6 +362,10 @@ for na in range(num_anim):
                         taste_first_bout_onset.append(trial_gape_bouts[first_bout_ind[0]][0])
                         taste_first_bout_times.append(trial_gape_bouts[first_bout_ind[0]])
                         taste_first_bout_lengths.append(trial_gape_bouts[first_bout_ind[0]][1] - trial_gape_bouts[first_bout_ind[0]][0])
+                    else:
+                        taste_first_bout_onset.append(np.nan)
+                        taste_first_bout_times.append([np.nan,np.nan])
+                        taste_first_bout_lengths.append(np.nan)
             else:
                 taste_first_single_gape_times.append([np.nan,np.nan])
                 taste_first_single_gapes.extend([np.nan])
@@ -362,12 +376,6 @@ for na in range(num_anim):
         #Save first gapes to numpy array
         #    SINGLE GAPE RESULTS
         taste_first_single_gape_times = np.array(taste_first_single_gape_times)
-        gape_onset_dir = os.path.join(anim_dir,'gape_onset_plots')
-        if os.path.isdir(gape_onset_dir) == False:
-            os.mkdir(gape_onset_dir)
-        gape_onset_type_dir = os.path.join(gape_onset_dir,type_name)
-        if os.path.isdir(gape_onset_type_dir) == False:
-            os.mkdir(gape_onset_type_dir)
         first_gape_save_dir = os.path.join(gape_onset_type_dir,anim_name + '_' + anim_taste_names[t_i] + '_first_single_gapes.npy')
         np.save(first_gape_save_dir, taste_first_single_gape_times)
         #    BOUT GAPE RESULTS

@@ -108,9 +108,11 @@ for t_n in taste_names:
     boris_index_match.extend([index])
 del t_n, bt_i, bt, index
 taste_names = []
+match_taste_names = []
 for t_ind, t_n in enumerate(emg_data_dict['taste_names']):
+    taste_names.extend([t_n])
     if boris_index_match[t_ind] != -1:
-        taste_names.extend([t_n])
+        match_taste_names.extend([t_n])
 
 #Run through each taste and each delivery and check if there's BORIS data then compare
 taste_gape_success = []
@@ -236,13 +238,13 @@ for t_i, t_name in enumerate(taste_names):
 del t_i, t_name
 
 f_gape_success = plt.figure(figsize=(5,5))
-plt.plot(np.arange(len(taste_names)),100*np.array(taste_gape_success),label='_')
+plt.plot(np.arange(len(match_taste_names)),100*np.array(taste_gape_success),label='_')
 mean = np.nanmean(100*np.array(taste_gape_success))
 plt.axhline(mean,linestyle='dashed',\
             color='k',label='mean = ' + str(np.round(mean,2)))
 plt.legend()
 plt.ylim([0,100])
-plt.xticks(np.arange(len(taste_names)),taste_names)
+plt.xticks(np.arange(len(match_taste_names)),match_taste_names)
 plt.ylabel('% Successfully Clustered Gapes')
 plt.xlabel('Taste')
 plt.title('Successfully Clustered Gapes \n(vs. BORIS)')
@@ -252,13 +254,13 @@ f_gape_success.savefig(os.path.join(overlap_save_dir,'gape_success_rates.svg'))
 plt.close(f_gape_success)
 
 f_taste_success = plt.figure(figsize=(5,5))
-plt.plot(np.arange(len(taste_names)),100*np.array(taste_all_success),label='_')
+plt.plot(np.arange(len(match_taste_names)),100*np.array(taste_all_success),label='_')
 mean = np.nanmean(100*np.array(taste_all_success))
 plt.axhline(mean,linestyle='dashed',\
             color='k',label='mean = ' + str(np.round(mean,2)))
 plt.legend()
 plt.ylim([0,100])
-plt.xticks(np.arange(len(taste_names)),taste_names)
+plt.xticks(np.arange(len(match_taste_names)),match_taste_names)
 plt.ylabel('% Success Overall')
 plt.xlabel('Taste')
 plt.title('Successful Identification of \nBoth Gapes and Nongapes \n(vs. BORIS)')

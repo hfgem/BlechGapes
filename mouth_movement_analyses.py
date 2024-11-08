@@ -249,7 +249,7 @@ if prev_run == 0:
                 ax[1, 0].set_title('Zoom peak loc + wid')
                 # Plot movement amplitude
                 ax[1, 1].plot(peak_inds-pre_taste, peak_amp)
-                ax[1, 1].axhline(mu_env+3*sig_env,
+                ax[1, 1].axhline(mu_env+2*sig_env,
                                  linestyle='dashed', alpha=0.5)
                 ax[1, 1].set_title('Peak Amplitude')
                 # Plot instantaneous frequency
@@ -259,7 +259,7 @@ if prev_run == 0:
                 ax[2, 0].set_title('Instantaneous Frequency')
                 # Pull out gape intervals only where amplitude is above cutoff, and frequency in range
                 gape_peak_inds = np.where(
-                    (peak_amp >= mu_env+3*sig_env)*(min_gape_band <= peak_freq)*(peak_freq <= max_gape_band))[0]
+                    (peak_amp >= mu_env+2*sig_env)*(min_gape_band <= peak_freq)*(peak_freq <= max_gape_band))[0]
                 gape_starts = peak_left[gape_peak_inds]
                 gape_ends = peak_right[gape_peak_inds]
                 ax[2, 1].plot(np.arange(-pre_taste, post_taste), tr_env)
@@ -271,7 +271,7 @@ if prev_run == 0:
                         x_vals, min_env*np.ones(len(x_vals)), max_env*np.ones(len(x_vals)), color='r', alpha=0.2)
                 ax[2, 1].set_title('Enveloped EMG Gape Times')
                 # Plot fast fourier transform frequencies
-                gape_peak_inds_fft = np.where((peak_amp >= mu_env+3*sig_env)*(
+                gape_peak_inds_fft = np.where((peak_amp >= mu_env+2*sig_env)*(
                     min_gape_band <= peak_freq_fft)*(peak_freq_fft <= max_gape_band))[0]
                 gape_times_fft = peak_inds[gape_peak_inds_fft]
                 gape_starts_fft = peak_left[gape_peak_inds_fft]

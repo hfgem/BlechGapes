@@ -105,7 +105,7 @@ for ut in unique_tastes:
     ut_combined = ('_').join(ut.split(' '))
     for ub in unique_behaviors:
         ub_combined = ('_').join(ub.split(' '))
-        exec(ub_combined + '_' + ut_combined + ' = np.zeros((max_trials,pre_taste+post_taste))')
+        exec(ub_combined + '_' + ut_combined + ' = np.zeros((max_trials+1,pre_taste+post_taste))')
 
 #Set numpy arrays equal to 1 where the behavior is occurring
 for d_i in range(len(reformat_data)):
