@@ -287,7 +287,7 @@ for td_i in range(len(tau_data_names)):
     #Remove no gape trials
     not_nan_inds = np.where(~np.isnan(gape_onset_i))[0]
     gape_onset_i_keep = gape_onset_i[not_nan_inds]
-    if len(not_nan_inds) > 1:
+    if len(not_nan_inds) > 2: #Need more than 2 values to get any reasonable correlation vals!
         for cp_i in range(num_cp):
             corr_result = stats.pearsonr(gape_onset_i_keep,tau_data[td_i][not_nan_inds,cp_i])
             taste_corr_collection[cp_i,td_i] = corr_result[0]
