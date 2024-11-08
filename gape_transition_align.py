@@ -120,7 +120,7 @@ for nf in range(num_files):
 		#Search for matching file type - ends in _gapes.npy
 		files_in_dir = os.listdir(gape_data_dir)
 		for filename in files_in_dir:
-			if filename[-10:] == '_gapes.npy':
+			if filename[-10:] == '_bouts.npy':
 				bool_val = bool_input("Is " + filename + " the correct associated file with " + given_name + "?")
 				if bool_val == 'y':
 					first_gapes =  np.load(os.path.join(gape_data_dir,filename))

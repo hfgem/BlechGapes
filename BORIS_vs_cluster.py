@@ -107,6 +107,10 @@ for t_n in taste_names:
     index = int_input("Which index aligns with " + t_n + "? ")
     boris_index_match.extend([index])
 del t_n, bt_i, bt, index
+taste_names = []
+for t_ind, t_n in enumerate(emg_data_dict['taste_names']):
+    if boris_index_match[t_ind] != -1:
+        taste_names.extend([t_n])
 
 #Run through each taste and each delivery and check if there's BORIS data then compare
 taste_gape_success = []
