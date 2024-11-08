@@ -10,20 +10,25 @@ Created on Wed Sep  6 12:51:31 2023
 ### find neurons with FR changes at each transition for CM26 quinine & saccharin on Test day 1###
 ###############################################################################################
 
-import sys, pickle, easygui, os, csv
+import sys, pickle, easygui, os
 sys.path.append('/home/cmazzio/Desktop/blech_clust/')
 sys.path.append('/home/cmazzio/Desktop/pytau/')
 from matplotlib import cm
+from pytau.changepoint_io import FitHandler
 import pylab as plt
+from pytau.utils import plotting
 import numpy as np
 from matplotlib import pyplot as plt
 from itertools import combinations
 from pytau.utils.ephys_data import EphysData
 from scipy import stats
-#Get dataframe for all data
-import pandas as pd
-dframe_path = '/media/cmazzio/large_data/Change_point_models/model_database.csv'
-dframe = pd.read_csv(dframe_path)
+from pytau.changepoint_io import DatabaseHandler
+fit_database = DatabaseHandler()
+fit_database.drop_duplicates()
+fit_database.clear_mismatched_paths()
+# Get fits for a particular experiment
+dframe = fit_database.fit_database
+from pytau.changepoint_analysis import PklHandler
 
 #%% Function definition
 
@@ -59,24 +64,13 @@ def bool_input(prompt):
 desired_states = 4 #which number of states dataset to use
 
 #Prompt user for the number of datasets needed in the analysis
-num_files = int_input("How many recording day files do you need to import for this analysis (integer value)? ")
-if num_files > 1:
-	print("Multiple file import selected.")
+num_files = int_input("How many data files do you need to import for this analysis (integer value)? ")
+if num_files >= 1:
+    print("Multiple file import selected.")
 else:
     print("Single file import selected.")
 
-#Prompt user which data type is being analyzed: BSA gapes or cluster gapes
-#BSA = 1, Cluster = 2
-data_type = int_input("Which gape dataset do you wish to analyze: BSA = 1, Cluster = 2 (enter integer value)? ")
-if data_type == 1:
-	type_name = 'bsa_gape_onset'
-elif data_type == 2:
-	type_name = 'cluster_gape_onset'
-else:
-	raise Exception
-
 #Pull all data into a dictionary
-nf_i = 0
 tau_data_dict = dict()
 for nf in range(num_files):
     #Directory selection
@@ -167,12 +161,11 @@ dict_save_dir = os.path.join(results_dir,'tau_dict.pkl')
 f = open(dict_save_dir,"wb")
 pickle.dump(tau_data_dict,f)
 #with open(dict_save_dir, "rb") as pickle_file:
-#	tau_data_dict = pickle.load(pickle_file)
+#    tau_data_dict = pickle.load(pickle_file)
 
 #%% ALIGNING GAPE ONSET TO A TRANSITION
 
 pre_taste_time = 2000
-post_taste_time = 5000
 
 #save folders
 gape_align_cp_dir = os.path.join(results_dir,'gape_align_plots')
@@ -190,7 +183,6 @@ cp_data = []
 tau_data_names = []
 first_gapes_data = []
 preceding_transitions = []
-
 preceding_transitions_hannah = []
 for nf in range(len(tau_data_dict)):
     given_name = tau_data_dict[nf]['given_name']
@@ -675,25 +667,25 @@ num_wanted_trials = len(sac_gape_trials)
 times = len(sac_emg_filt[1])
 sac_gape_emg_filt = np.zeros(shape = (num_wanted_trials, sac_emg_filt.shape[1]))
 for trial_ind, trial in enumerate(sac_gape_trials):
-	for time_ind, time in enumerate(range(times)):
-		this_gape_emg_filt = sac_emg_filt[trial,time]
-		sac_gape_emg_filt[trial_ind,time_ind] = this_gape_emg_filt
+    for time_ind, time in enumerate(range(times)):
+        this_gape_emg_filt = sac_emg_filt[trial,time]
+        sac_gape_emg_filt[trial_ind,time_ind] = this_gape_emg_filt
 
 #make axes
 fig,ax = plt.subplots(sac_emg_filt.shape[0],1, 
-					   sharex=True, sharey=True,
-					   figsize = (10, sac_emg_filt.shape[0]))
+                       sharex=True, sharey=True,
+                       figsize = (10, sac_emg_filt.shape[0]))
 #plot tau over emg traces
 i =0
 for this_dat, this_ax, this_tau in zip(sac_emg_filt, ax.flatten(), sac_tau+2000):
-	this_ax.plot(this_dat)
-	for x in this_tau:
-		
-		this_ax.axvline(x, color = 'red')
-	if i in sac_gape_trials:
-		index_ = np.where(sac_gape_trials == i)[0][0]
-		this_ax.scatter(sac_gape_onset[index_]+2000, 800, s=50, c='green')
-	i = i+1
+    this_ax.plot(this_dat)
+    for x in this_tau:
+        
+        this_ax.axvline(x, color = 'red')
+    if i in sac_gape_trials:
+        index_ = np.where(sac_gape_trials == i)[0][0]
+        this_ax.scatter(sac_gape_onset[index_]+2000, 800, s=50, c='green')
+    i = i+1
 
 #for quinine
 
@@ -708,25 +700,25 @@ num_wanted_trials = len(qhcl_gape_trials)
 times = len(qhcl_emg_filt[1])
 qhcl_gape_emg_filt = np.zeros(shape = (num_wanted_trials, qhcl_emg_filt.shape[1]))
 for trial_ind, trial in enumerate(qhcl_gape_trials):
-	for time_ind, time in enumerate(range(times)):
-		this_gape_emg_filt = qhcl_emg_filt[trial,time]
-		qhcl_gape_emg_filt[trial_ind,time_ind] = this_gape_emg_filt
+    for time_ind, time in enumerate(range(times)):
+        this_gape_emg_filt = qhcl_emg_filt[trial,time]
+        qhcl_gape_emg_filt[trial_ind,time_ind] = this_gape_emg_filt
 
 #make axes
 fig,ax = plt.subplots(qhcl_emg_filt.shape[0],1, 
-					   sharex=True, sharey=True,
-					   figsize = (10, qhcl_emg_filt.shape[0]))
+                       sharex=True, sharey=True,
+                       figsize = (10, qhcl_emg_filt.shape[0]))
 #plot tau over emg traces
 i =0
 for this_dat, this_ax, this_tau in zip(qhcl_emg_filt, ax.flatten(), qhcl_tau+2000):
-	this_ax.plot(this_dat)
-	for x in this_tau:
-		
-		this_ax.axvline(x, color = 'red')
-	if i in qhcl_gape_trials:
-		index_ = np.where(qhcl_gape_trials == i)[0][0]
-		this_ax.scatter(qhcl_gape_onset[index_]+2000, 800, s=50, c='green')
-	i = i+1
+    this_ax.plot(this_dat)
+    for x in this_tau:
+        
+        this_ax.axvline(x, color = 'red')
+    if i in qhcl_gape_trials:
+        index_ = np.where(qhcl_gape_trials == i)[0][0]
+        this_ax.scatter(qhcl_gape_onset[index_]+2000, 800, s=50, c='green')
+    i = i+1
 
 
 #%%
@@ -740,36 +732,36 @@ new_sac_gape_tau = sac_gape_tau +2000
 color_list = ['lightcoral','teal', 'red']
 
 fig,ax = plt.subplots(len(plot_trials_sac),1,
-		sharey=True, sharex=True, figsize = (15,20))
+        sharey=True, sharex=True, figsize = (15,20))
 
 for trial in range(len(plot_trials_sac)):
-	ax[trial].plot(time_vec, sac_emg_filt[plot_trials_sac[trial], time_vec], color ='black')
+    ax[trial].plot(time_vec, sac_emg_filt[plot_trials_sac[trial], time_vec], color ='black')
 
 
-#for overlaying epochs on EMG traces	
-	for cp in range(3): 
-		start = new_sac_gape_tau[trial,cp]
-		if cp < 2:
-			end = new_sac_gape_tau[trial,cp+1]
-		else:
-			end = time_vec[-1]
-		ax[trial].axvspan(start, end, color = color_list[cp], alpha = 0.7)
+#for overlaying epochs on EMG traces    
+    for cp in range(3): 
+        start = new_sac_gape_tau[trial,cp]
+        if cp < 2:
+            end = new_sac_gape_tau[trial,cp+1]
+        else:
+            end = time_vec[-1]
+        ax[trial].axvspan(start, end, color = color_list[cp], alpha = 0.7)
 
-	#ax[trial].set_ylim([1500, 4000])
-	ax[trial].tick_params(axis="y", labelsize=20)
-	ax[trial].axvline(2000, color='gray', linewidth = 4, linestyle = 'dashed')
+    #ax[trial].set_ylim([1500, 4000])
+    ax[trial].tick_params(axis="y", labelsize=20)
+    ax[trial].axvline(2000, color='gray', linewidth = 4, linestyle = 'dashed')
 
 
-#quinine	
+#quinine    
 plot_trials_qhcl = [1,2,9,12]  
 time_vec_qhcl = np.arange(1500,4001)
 new_sac_gape_tau = sac_gape_tau +2000  
 
 fig,ax = plt.subplots(len(plot_trials_qhcl),1,
-		sharey=True, sharex=True, figsize = (15,20))
+        sharey=True, sharex=True, figsize = (15,20))
 
 for trial in range(len(plot_trials_qhcl)):
-	ax[trial].plot(time_vec, qhcl_emg_filt[plot_trials_qhcl[trial], time_vec], color ='black')
+    ax[trial].plot(time_vec, qhcl_emg_filt[plot_trials_qhcl[trial], time_vec], color ='black')
 
 
 
@@ -778,7 +770,7 @@ for trial in range(len(plot_trials_qhcl)):
 
 
 
-	
+    
  
 
 
@@ -789,31 +781,31 @@ for trial in range(len(plot_trials_qhcl)):
 #%%
 #inds = list(np.ndindex(ax.shape))
 for trial in range(len(plot_trials_sac)):
-	#plot emg signal
-	ax[trial].plot(time_vec, cut_emg_filt[taste_index,wanted_trials[trial]].flatten(), color ='black')
-	#plot changepoints
-	for tau_i in range(model_parameters['states']-2):
-		start = emg_tau[wanted_trials[trial]][tau_i]
-		if tau_i < model_parameters['states']-1:
-			end = emg_tau[wanted_trials[trial]][tau_i+1]
-		else:
-			end = time_vec[-1]
-		ax[trial].axvspan(start, end,
-			color= color_list[tau_i],
-			alpha = 0.7)
-	#set axis range
-	ax[trial].set_ylim([-1000, 1000])
-	ax[trial].tick_params(axis="y", labelsize=25)
-	ax[trial].axvline(0, color='gray', linewidth = 4, linestyle = 'dashed')
+    #plot emg signal
+    ax[trial].plot(time_vec, cut_emg_filt[taste_index,wanted_trials[trial]].flatten(), color ='black')
+    #plot changepoints
+    for tau_i in range(model_parameters['states']-2):
+        start = emg_tau[wanted_trials[trial]][tau_i]
+        if tau_i < model_parameters['states']-1:
+            end = emg_tau[wanted_trials[trial]][tau_i+1]
+        else:
+            end = time_vec[-1]
+        ax[trial].axvspan(start, end,
+            color= color_list[tau_i],
+            alpha = 0.7)
+    #set axis range
+    ax[trial].set_ylim([-1000, 1000])
+    ax[trial].tick_params(axis="y", labelsize=25)
+    ax[trial].axvline(0, color='gray', linewidth = 4, linestyle = 'dashed')
  
-#	ax[trial].plt.x_ticks(fontsize=25)
-#	ax[trial].tick_params(axis='y', which='minor', labelsize=20 )
-#	ax[trial].set_ylabel('hi')
-	if trial == 0:
-		this_taste = tastes[taste_index]
-#		ax[trial].set_title(this_taste)
-	if trial == emg_filt.shape[1]-1:
-		ax[trial].set_xlabel('Time post-stim (ms)')
+#    ax[trial].plt.x_ticks(fontsize=25)
+#    ax[trial].tick_params(axis='y', which='minor', labelsize=20 )
+#    ax[trial].set_ylabel('hi')
+    if trial == 0:
+        this_taste = tastes[taste_index]
+#        ax[trial].set_title(this_taste)
+    if trial == emg_filt.shape[1]-1:
+        ax[trial].set_xlabel('Time post-stim (ms)')
 #plt.suptitle('Red --> Not significant, Blue --> Significant')
 plt.subplots_adjust(top = 0.95)
 #plt.yticks(fontsize = 20)
@@ -835,13 +827,13 @@ fig.savefig('emg_filtered_plots_with_changepoint_select_trials' + str(tastes[tas
 
 # #make axes
 # fig,ax = plt.subplots(qhcl_gape_emg_filt.shape[0],1, 
-#						sharex=True, sharey=True,
-#						figsize = (10, qhcl_gape_emg_filt.shape[0]))
+#                        sharex=True, sharey=True,
+#                        figsize = (10, qhcl_gape_emg_filt.shape[0]))
 # #plot tau over emg traces
 # for this_dat, this_ax, this_tau in zip(qhcl_gape_emg_filt, ax.flatten(), qhcl_gape_tau+2000):
-#	 this_ax.plot(this_dat)
-#	 for x in this_tau:
-#		 this_ax.axvline(x, color = 'red')
+#     this_ax.plot(this_dat)
+#     for x in this_tau:
+#         this_ax.axvline(x, color = 'red')
 
 
 
@@ -849,8 +841,8 @@ fig.savefig('emg_filtered_plots_with_changepoint_select_trials' + str(tastes[tas
 
 
 # fig,ax = plt.subplots(sac_emg_filt.shape[0],1, 
-#						sharex=True, sharey=True,
-#						figsize = (10, sac_emg_filt.shape[0]))
+#                        sharex=True, sharey=True,
+#                        figsize = (10, sac_emg_filt.shape[0]))
 
 
 
@@ -882,9 +874,9 @@ print('Statistics=%.3f, p=%.3f' % (stat, p))
 # interpret
 alpha = 0.05
 if p > alpha:
-	print('Same distribution (fail to reject H0)')
+    print('Same distribution (fail to reject H0)')
 else:
-	print('Different distribution (reject H0)')
+    print('Different distribution (reject H0)')
 
 
 #find correlation between gape onset time and transition 1 time for sac
@@ -901,7 +893,7 @@ corr, p = pearsonr(sac_qhcl_tau_gape_trials, sac_qhcl_gape_onsets_gape_trials)
 # =============================================================================
 # inds = np.array(sac_qhcl_gape_onsets_gape_trials) < 750
 # pearsonr(np.array(sac_qhcl_tau_gape_trials)[inds], 
-#		  np.array(sac_qhcl_gape_onsets_gape_trials)[inds])
+#          np.array(sac_qhcl_gape_onsets_gape_trials)[inds])
 # =============================================================================
 
 print(f'Pearsons correlation sac & qhcl: {round(corr, 3)}')
