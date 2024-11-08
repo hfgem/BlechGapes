@@ -7,7 +7,6 @@ Created on Fri Jan 26 11:42:34 2024
 Test code to try to pull out different mouth movements from emg data
 """
 
-
 from functions.mouth_movement_funcs import *
 from scipy.fft import fft, fftfreq
 from scipy.signal import find_peaks, peak_widths
@@ -72,6 +71,7 @@ except:
             taste_names.append(
                 input("What is the name of taste " + str(t_i+1) + ": "))
         emg_data_dict['taste_names'] = taste_names
+
         print("\tEmg filtered data successfully imported for dataset.")
     except:
         print("\tEmg filtered data not imported successfully.")

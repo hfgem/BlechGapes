@@ -17,6 +17,7 @@ import pandas as pd
 from scipy.stats import mannwhitneyu, f_oneway
 from itertools import combinations
 # Necessary blech_clust modules
+
 #sys.path.append('/home/cmazzio/Desktop/blech_clust/')
 #sys.path.append('Users/hannahgermaine/Documents/GitHub/blech_clust/')
 sys.path.append('/home/cmazzio/Desktop/blech_clust/utils')
@@ -46,6 +47,7 @@ def int_input(prompt):
 
 
 def bw_plot(dataset,xlabels,all_pairs,sig_vals,ylabel,anim_name,title,savename,save_dir):
+
     #This function plots the results as box-and-whisker plots
     f_box = plt.figure(figsize=(8,8))
     for d_i in range(len(dataset)):
@@ -149,6 +151,7 @@ else:
 #Pull all data into a dictionary
 data_dict = dict()
 for na in range(num_anim):
+
     #Directory selection
     animal_dict = dict()
     print("Please select the folder where the data # " + str(na+1) + " is stored.")
@@ -193,6 +196,7 @@ for na in range(num_anim):
     animal_dict['gape_data'] = animal_gape_data
     data_dict[na] = animal_dict
 
+
 #Analysis Storage Directory
 print('Please select a directory to save all results from this set of analyses.')
 results_dir = easygui.diropenbox(title='Please select the storage folder.')
@@ -205,7 +209,7 @@ dict_save_dir = os.path.join(results_dir,'gape_onset_dict.pkl') #BlechGapes_anal
 f = open(dict_save_dir,"wb")
 pickle.dump(data_dict,f)
 #with open(dict_save_dir, "rb") as pickle_file:
-#    data_dict = pickle.load(pickle_file)
+#	data_dict = pickle.load(pickle_file)
 
 #%% Process Gape Data for Analyses
 pre_time = 2000 #pre-taste time in data (ms) to subtract
@@ -224,6 +228,7 @@ for na in range(num_anim):
         gape_data_lengths.extend(np.shape(taste_gape_bool[1]))
         anim_bool_gape_data.append(taste_gape_bool)
     data_dict[na]['bool_gape_data'] = anim_bool_gape_data
+
 gape_data_lengths = np.array(gape_data_lengths)
 
 #Get user input on the start time of a gape and length
@@ -501,6 +506,7 @@ for ap_i in range(len(all_pairs)):
     if p_bout_len <= 0.05:
         sig_pairs_first_bout_lengths[ap_i] = 1
         
+
 #_____Plot across-animal/dataset stats_____
 #Plot box-and-whisker plots of first single gape onsets
 bw_plot(first_single_gapes,first_data_names,all_pairs,sig_pairs_first_single_gapes,\
