@@ -398,7 +398,6 @@ for na in range(num_anim):
     all_pairs = list(combinations(np.arange(num_tastes),2))
     #    SINGLE GAPE ANALYSIS
     sig_pairs_first_single_gapes = np.zeros(len(all_pairs))
-    sig_pairs_first_single_gape_lengths = np.zeros(len(all_pairs))
     sig_pairs_first_single_gape_bout_lengths = np.zeros(len(all_pairs))
     for ap_i in range(len(all_pairs)):
         ap = all_pairs[ap_i]
@@ -442,7 +441,7 @@ for na in range(num_anim):
             anim_name,'Time to First Single Gape','_time_to_first_single_gape_cumhist',first_single_gapes_dir)
     if data_type == 1: #BSA
         #Plot box-and-whisker plots of first gape lengths
-        bw_plot(anim_first_single_gape_bout_lengths,anim_taste_names,all_pairs,sig_pairs_first_single_gape_lengths,\
+        bw_plot(anim_first_single_gape_bout_lengths,anim_taste_names,all_pairs,sig_pairs_first_single_gape_bout_lengths,\
              'First Single Gape Length (ms)',anim_name,'First Single Gape Length',\
                  '_first_single_gape_lengths_bw',first_single_gapes_dir)
         #Plot cumulative histogram of first gape lengths
@@ -476,7 +475,7 @@ for na in range(num_anim):
             anim_name,'Time to First Compound Gape','_time_to_first_compound_gape_cumhist',first_compound_gapes_dir)
     if data_type == 1: #BSA
         #Plot box-and-whisker plots of first gape lengths
-        bw_plot(anim_first_bout_lengths,anim_taste_names,all_pairs,sig_pairs_first_single_gape_lengths,\
+        bw_plot(anim_first_bout_lengths,anim_taste_names,all_pairs,sig_pairs_first_single_gape_bout_lengths,\
              'First Compound Gape Length (ms)',anim_name,'First Compound Gape Length',\
                  '_first_compound_gape_lengths_bw',first_compound_gapes_dir)
         #Plot cumulative histogram of first gape lengths
@@ -539,7 +538,7 @@ bw_plot(first_single_gapes,first_data_names,all_pairs,sig_pairs_first_single_gap
 hist_plot(first_single_gapes,first_data_names,'Time to First Gape (ms)',\
         'all','Time to First Gape','_time_to_first_gape_cumhist',first_single_gapes_dir)
 #Plot box-and-whisker plots of first single gape lengths
-bw_plot(first_single_gape_bout_lengths,first_data_names,all_pairs,sig_pairs_first_single_gape_lengths,\
+bw_plot(first_single_gape_bout_lengths,first_data_names,all_pairs,sig_pairs_first_single_gape_bout_lengths,\
      'First Gape Length (ms)','all','First Gape Length',\
          '_first_single_gape_lengths_bw',first_single_gapes_dir)
 #Plot cumulative histogram of first single gape lengths
