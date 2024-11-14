@@ -14,7 +14,7 @@ import tables, easygui, sys, os, glob, json, pickle
 import matplotlib.pyplot as plt
 from matplotlib import cm
 import pandas as pd
-from scipy.stats import mannwhitneyu, f_oneway
+from scipy.stats import mannwhitneyu, f_oneway, ttest_ind
 from itertools import combinations
 # Necessary blech_clust modules
 
@@ -49,7 +49,7 @@ def int_input(prompt):
 def bw_plot(dataset,xlabels,all_pairs,sig_vals,ylabel,anim_name,title,savename,save_dir):
 
     #This function plots the results as box-and-whisker plots
-    f_box = plt.figure(figsize=(8,8))
+    f_box = plt.figure(figsize=(16,16))
     for d_i in range(len(dataset)):
         dataset_i = np.array(dataset[d_i])
         no_nan_data = dataset_i[~np.isnan(dataset_i)]
@@ -402,10 +402,14 @@ for na in range(num_anim):
     sig_pairs_first_single_gape_bout_lengths = np.zeros(len(all_pairs))
     for ap_i in range(len(all_pairs)):
         ap = all_pairs[ap_i]
-        stat_first, p_first = mannwhitneyu(anim_first_single_gapes[ap[0]], anim_first_single_gapes[ap[1]])
+        stat_first, p_first = ttest_ind(anim_first_single_gapes[ap[0]], \
+                                           anim_first_single_gapes[ap[1]], \
+                                               equal_var=False,nan_policy='omit')
         if p_first <= 0.05:
             sig_pairs_first_single_gapes[ap_i] = 1
-        stat_first_len, p_first_len = mannwhitneyu(anim_first_single_gape_bout_lengths[ap[0]], anim_first_single_gape_bout_lengths[ap[1]])
+        stat_first_len, p_first_len = ttest_ind(anim_first_single_gape_bout_lengths[ap[0]], \
+                                                   anim_first_single_gape_bout_lengths[ap[1]], \
+                                                       equal_var=False,nan_policy='omit')
         if p_first_len <= 0.05:
             sig_pairs_first_single_gape_bout_lengths[ap_i] = 1
     #    BOUT ANALYSIS
@@ -413,11 +417,15 @@ for na in range(num_anim):
     sig_pairs_first_bout_lengths = np.zeros(len(all_pairs))
     for ap_i in range(len(all_pairs)):
         ap = all_pairs[ap_i]
-        stat_first, p_first = mannwhitneyu(anim_first_bouts[ap[0]], anim_first_bouts[ap[1]])
+        stat_first, p_first = ttest_ind(anim_first_bouts[ap[0]], \
+                                           anim_first_bouts[ap[1]], \
+                                               equal_var=False,nan_policy='omit')
         if p_first <= 0.05:
             sig_pairs_first_bouts[ap_i] = 1
         
-        stat_first_len, p_first_len = mannwhitneyu(anim_first_bout_lengths[ap[0]], anim_first_bout_lengths[ap[1]])
+        stat_first_len, p_first_len = ttest_ind(anim_first_bout_lengths[ap[0]], \
+                                                   anim_first_bout_lengths[ap[1]], \
+                                                       equal_var=False,nan_policy='omit')
         if p_first_len <= 0.05:
             sig_pairs_first_bout_lengths[ap_i] = 1
     
@@ -498,19 +506,26 @@ sig_pairs_first_bout_lengths = np.zeros(len(all_pairs)) #Calculated sig btwn pai
 for ap_i in range(len(all_pairs)):
     ap = all_pairs[ap_i]
     #First gape onset times
-    stat_first, p_first = mannwhitneyu(first_single_gapes[ap[0]], first_single_gapes[ap[1]])
+    stat_first, p_first = ttest_ind(first_single_gapes[ap[0]], \
+                                       first_single_gapes[ap[1]], \
+                                           equal_var=False,nan_policy='omit')
     if p_first <= 0.05:
         sig_pairs_first_single_gapes[ap_i] = 1
     #First gape bout lengths
-    stat_first_len, p_first_len = mannwhitneyu(first_single_gape_bout_lengths[ap[0]], first_single_gape_bout_lengths[ap[1]])
+    stat_first_len, p_first_len = ttest_ind(first_single_gape_bout_lengths[ap[0]], \
+                                               first_single_gape_bout_lengths[ap[1]], \
+                                                   equal_var=False,nan_policy='omit')
     if p_first_len <= 0.05:
         sig_pairs_first_single_gape_bout_lengths[ap_i] = 1
     #First consecutive bout onset times
-    stat_bout, p_bout = mannwhitneyu(first_bouts[ap[0]], first_bouts[ap[1]])
+    stat_bout, p_bout = ttest_ind(first_bouts[ap[0]], first_bouts[ap[1]], \
+                                     equal_var=False,nan_policy='omit')
     if p_bout <= 0.05:
         sig_pairs_first_bouts[ap_i] = 1
     #First consecutive bout lengths
-    stat_bout_len, p_bout_len = mannwhitneyu(first_bout_lengths[ap[0]], first_bout_lengths[ap[1]])
+    stat_bout_len, p_bout_len = ttest_ind(first_bout_lengths[ap[0]], \
+                                             first_bout_lengths[ap[1]], \
+                                                 equal_var=False,nan_policy='omit')
     if p_bout_len <= 0.05:
         sig_pairs_first_bout_lengths[ap_i] = 1
         
